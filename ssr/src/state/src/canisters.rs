@@ -13,7 +13,7 @@ use ic_agent::identity::Secp256k1Identity;
 use k256::elliptic_curve::JwkEcKey;
 use leptos::prelude::*;
 use leptos_router::{hooks::use_query, params::Params};
-use leptos_use::use_cookie;
+use leptos_use::{use_cookie_with_options, UseCookieOptions};
 use serde::{Deserialize, Serialize};
 use yral_canisters_common::{Canisters, CanistersAuthWire};
 
@@ -82,7 +82,10 @@ impl Default for AuthState {
         });
 
         let (referrer_cookie, set_referrer_cookie) =
-            use_cookie::<Principal, FromToStringCodec>(REFERRER_COOKIE);
+            use_cookie_with_options::<Principal, FromToStringCodec>(
+                REFERRER_COOKIE,
+                UseCookieOptions::default().path("/"),
+            );
         let referrer_query = use_query::<Referrer>();
         let referrer_principal = Signal::derive(move || {
             let referrer = referrer_query()
@@ -98,8 +101,10 @@ impl Default for AuthState {
             }
         });
 
-        let is_logged_in_with_oauth =
-            use_cookie::<bool, FromToStringCodec>(ACCOUNT_CONNECTED_STORE);
+        let is_logged_in_with_oauth = use_cookie_with_options::<bool, FromToStringCodec>(
+            ACCOUNT_CONNECTED_STORE,
+            UseCookieOptions::default().path("/"),
+        );
 
         let new_identity_setter = RwSignal::new(None::<DelegatedIdentityWire>);
 
@@ -142,8 +147,10 @@ impl Default for AuthState {
             },
         );
 
-        let user_principal_cookie =
-            use_cookie::<Principal, FromToStringCodec>(USER_PRINCIPAL_STORE);
+        let user_principal_cookie = use_cookie_with_options::<Principal, FromToStringCodec>(
+            USER_PRINCIPAL_STORE,
+            UseCookieOptions::default().path("/"),
+        );
         let user_principal = Resource::new(
             move || {
                 user_identity_resource.track();
@@ -162,8 +169,10 @@ impl Default for AuthState {
             },
         );
 
-        let user_canister_id_cookie =
-            use_cookie::<Principal, FromToStringCodec>(USER_CANISTER_ID_STORE);
+        let user_canister_id_cookie = use_cookie_with_options::<Principal, FromToStringCodec>(
+            USER_CANISTER_ID_STORE,
+            UseCookieOptions::default().path("/"),
+        );
         let user_canister = Resource::new(
             move || {
                 canisters_resource.track();
