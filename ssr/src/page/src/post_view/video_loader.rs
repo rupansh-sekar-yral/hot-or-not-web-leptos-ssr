@@ -101,10 +101,11 @@ pub fn VideoView(
         if *muted == mixpanel_video_muted.get_untracked() {
             return ret;
         }
+        mixpanel_video_muted.set(*muted);
+
         let Some(global) = MixpanelGlobalProps::from_ev_ctx(ev_ctx) else {
             return ret;
         };
-        mixpanel_video_muted.set(*muted);
 
         let post = post_for_mixpanel.get_untracked().unwrap();
         let is_game_enabled = true;

@@ -66,6 +66,8 @@ pub struct AuthState {
 
 impl Default for AuthState {
     fn default() -> Self {
+        // Super complex, don't mess with this.
+
         let temp_identity_resource = OnceResource::new(async move {
             generate_anonymous_identity_if_required()
                 .await
@@ -132,6 +134,7 @@ impl Default for AuthState {
             },
         );
 
+        let user_details_for_event_ctx = StoredValue::new(None::<EventUserDetails>);
         let canisters_resource: AuthCansResource = Resource::new(
             move || {
                 user_identity_resource.track();
@@ -142,7 +145,14 @@ impl Default for AuthState {
                     let id_wire = user_identity_resource.await?;
                     let ref_principal = referrer_principal.get_untracked();
 
-                    do_canister_auth(id_wire, ref_principal).await
+                    let res = do_canister_auth(id_wire, ref_principal).await?;
+
+                    user_details_for_event_ctx.set_value(Some(EventUserDetails {
+                        details: res.profile_details.clone(),
+                        canister_id: res.user_canister,
+                    }));
+
+                    Ok::<_, ServerFnError>(res)
                 })
             },
         );
@@ -193,16 +203,13 @@ impl Default for AuthState {
         );
 
         let event_ctx = EventCtx {
-            is_connected: Signal::derive(move || {
-                is_logged_in_with_oauth.0.get().unwrap_or_default()
-            }),
-            user_details: Signal::derive(move || {
-                let cans = canisters_resource.get()?.ok()?;
-                Some(EventUserDetails {
-                    details: cans.profile_details,
-                    canister_id: cans.user_canister,
-                })
-            }),
+            is_connected: StoredValue::new(Box::new(move || {
+                is_logged_in_with_oauth
+                    .0
+                    .get_untracked()
+                    .unwrap_or_default()
+            })),
+            user_details: user_details_for_event_ctx,
         };
 
         Self {
@@ -240,6 +247,7 @@ impl AuthState {
         self.user_principal_cookie
             .1
             .set(Some(Principal::self_authenticating(&new_identity.from_key)));
+        self.event_ctx.user_details.set_value(None);
         self.new_identity_setter.set(Some(new_identity));
     }
 
