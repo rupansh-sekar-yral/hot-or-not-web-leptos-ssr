@@ -7,7 +7,9 @@ use axum::{
 };
 use axum::{routing::get, Router};
 use hot_or_not_web_leptos_ssr::fallback::file_and_error_handler;
+use sentry_tower::{NewSentryLayer, SentryHttpLayer};
 use state::server::AppState;
+use tower::ServiceBuilder;
 use tracing::instrument;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utils::host::is_host_or_origin_from_preview_domain;
@@ -152,9 +154,9 @@ async fn main_impl() {
         }
     };
 
-    // let sentry_tower_layer = ServiceBuilder::new()
-    //     .layer(NewSentryLayer::new_from_top())
-    //     .layer(SentryHttpLayer::with_transaction());
+    let sentry_tower_layer = ServiceBuilder::new()
+        .layer(NewSentryLayer::new_from_top())
+        .layer(SentryHttpLayer::with_transaction());
 
     // build our application with a route
     let app = Router::new()
@@ -183,7 +185,7 @@ async fn main_impl() {
         )
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
         .fallback(file_and_error_handler)
-        // .layer(sentry_tower_layer)
+        .layer(sentry_tower_layer)
         .with_state(res.app_state);
 
     // run our app with hyper
