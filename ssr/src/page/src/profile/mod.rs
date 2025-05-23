@@ -107,7 +107,6 @@ fn ProfileViewInner(user: ProfileDetails, user_canister: Principal) -> impl Into
 
     let auth = auth_state();
     let is_connected = auth.is_logged_in_with_oauth();
-    let viewer_principal = auth.user_principal_for_suspense();
 
     view! {
         <div class="min-h-screen bg-black text-white overflow-y-auto pt-10 pb-12">
@@ -129,7 +128,7 @@ fn ProfileViewInner(user: ProfileDetails, user_canister: Principal) -> impl Into
                                 {display_name}
                             </span>
                             <Suspense>
-                            {move || viewer_principal.get().map(|v| {
+                            {move || auth.user_principal.get().map(|v| {
                                 view! {
                                     <Show when=move || !is_connected() && v == Ok(user_principal)>
                                         <div class="md:w-4/12 w-6/12 pt-5">

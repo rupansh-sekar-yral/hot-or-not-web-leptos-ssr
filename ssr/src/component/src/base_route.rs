@@ -1,6 +1,4 @@
-use futures::StreamExt;
 use leptos::prelude::*;
-use leptos::task::spawn_local;
 use leptos_router::components::Outlet;
 use leptos_use::use_cookie;
 
@@ -19,26 +17,17 @@ fn CtxProvider(children: Children) -> impl IntoView {
     let location = leptos_router::hooks::use_location();
 
     Effect::new(move |_| {
-        let user_canister = auth.user_canister_for_suspense();
-        let user_principal = auth.user_principal_for_suspense();
-        spawn_local(async move {
-            let mut user_canister_stream = user_canister.to_stream();
-            while let Some(maybe_user_canister) = user_canister_stream.next().await {
-                let user_canister = maybe_user_canister
-                    .and_then(|c| c.ok())
-                    .map(|c| c.to_text());
-                set_sentry_user_canister(user_canister);
-            }
-        });
-        spawn_local(async move {
-            let mut user_principal_stream = user_principal.to_stream();
-            while let Some(maybe_user_principal) = user_principal_stream.next().await {
-                let user_principal = maybe_user_principal
-                    .and_then(|c| c.ok())
-                    .map(|c| c.to_text());
-                set_sentry_user(user_principal);
-            }
-        });
+        let maybe_user_canister = auth.user_canister.get();
+        let user_canister = maybe_user_canister
+            .and_then(|c| c.ok())
+            .map(|c| c.to_text());
+        set_sentry_user_canister(user_canister);
+    });
+
+    Effect::new(move |_| {
+        let user_principal = auth.user_principal.get();
+        let user_principal = user_principal.and_then(|c| c.ok()).map(|c| c.to_text());
+        set_sentry_user(user_principal);
     });
 
     // migrates account connected local storage to cookie
@@ -54,17 +43,12 @@ fn CtxProvider(children: Children) -> impl IntoView {
     });
 
     Effect::new(move |_| {
-        let pathname = location.pathname;
+        let pathname = location.pathname.get();
         let is_logged_in = auth.is_logged_in_with_oauth();
-        spawn_local(async move {
-            let mut pathname = pathname.to_stream();
-            while let Some(path) = pathname.next().await {
-                let Ok(principal) = auth.user_principal_no_suspense().await else {
-                    return;
-                };
-                PageVisit.send_event(principal, is_logged_in.get_untracked(), path);
-            }
-        });
+        let Some(principal) = auth.user_principal_if_available() else {
+            return;
+        };
+        PageVisit.send_event(principal, is_logged_in.get_untracked(), pathname);
     });
 
     children()

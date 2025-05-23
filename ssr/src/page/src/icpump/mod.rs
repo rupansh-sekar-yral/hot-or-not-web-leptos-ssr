@@ -137,7 +137,6 @@ pub fn ICPumpListingFeed() -> impl IntoView {
         RwSignal::new(VecDeque::new());
 
     let auth = auth_state();
-    let cur_principal = auth.user_principal_for_suspense();
 
     let _fetch_res = auth.derive_resource(
         move || page.get(),
@@ -169,7 +168,7 @@ pub fn ICPumpListingFeed() -> impl IntoView {
     );
 
     Effect::new(move |_| {
-        if let Some(Ok(principal)) = cur_principal.get() {
+        if let Some(principal) = auth.user_principal_if_available() {
             spawn_local(async move {
                 let (_app, firestore) = init_firebase();
                 let mut stream = listen_to_documents(&firestore);

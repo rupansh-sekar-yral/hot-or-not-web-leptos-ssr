@@ -40,11 +40,10 @@ fn ProfilePostWithUpdates<const LIMIT: u64, VidStream: ProfVideoStream<LIMIT>>(
         limit: 10,
     });
     let auth = auth_state();
-    let viewer_canister = auth.user_canister_for_suspense();
     let overlay = move || {
         view! {
             <Suspense>
-                {move || viewer_canister.get().map(|canister| {
+                {move || auth.user_canister.get().map(|canister| {
                     if canister == Ok(initial_post.canister_id) {
                         Some(view! { <YourProfileOverlay /> }.into_any())
                     } else {

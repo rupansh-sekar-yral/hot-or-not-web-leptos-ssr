@@ -2,6 +2,7 @@ mod history;
 
 use candid::Principal;
 use gloo::timers::callback::Timeout;
+use leptos::either::Either;
 use leptos::{prelude::*, reactive::wrappers::write::SignalSetter};
 use leptos_icons::*;
 use leptos_meta::*;
@@ -88,18 +89,20 @@ fn ReferLoaded(user_principal: Principal) -> impl IntoView {
 #[component]
 fn ReferCode() -> impl IntoView {
     let auth = auth_state();
-    let user_principal = auth.user_principal_for_suspense();
     view! {
         <Suspense fallback=DashboxLoading>
-        {move || user_principal.get().map(|res| {
+        {move || Suspend::new(async move {
+            let res = auth.user_principal.await;
             match res {
-                Ok(user_principal) => view! {
-                    <ReferLoaded user_principal />
-                }.into_any(),
+                Ok(user_principal) => {
+                    Either::Left(view! {
+                        <ReferLoaded user_principal />
+                    })
+                }
                 Err(e) => {
-                    view! {
+                    Either::Right(view! {
                         <Redirect path=format!("/error?err={e}") />
-                    }.into_any()
+                    })
                 }
             }
         })}
