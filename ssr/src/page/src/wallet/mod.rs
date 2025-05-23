@@ -4,22 +4,20 @@ pub mod transactions;
 pub mod txn;
 
 use candid::Principal;
+use component::connect::ConnectLogin;
 use component::icons::notification_icon::NotificationIcon;
 use component::share_popup::ShareButtonWithFallbackPopup;
-use component::{canisters_prov::AuthCansProvider, connect::ConnectLogin};
 use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::components::Redirect;
 use leptos_router::hooks::use_params;
 use leptos_router::params::Params;
-use state::canisters::unauth_canisters;
-use state::{app_state::AppState, canisters::authenticated_canisters};
+use state::app_state::AppState;
+use state::canisters::{auth_state, unauth_canisters};
 use tokens::TokenList;
-use utils::event_streaming::events::account_connected_reader;
 use utils::send_wrap;
 use utils::try_or_redirect_opt;
 use yral_canisters_common::utils::profile::ProfileDetails;
-use yral_canisters_common::Canisters;
 
 /// Controller for the login modal, passed through context
 /// under wallet
@@ -146,14 +144,19 @@ pub fn Wallet() -> impl IntoView {
             match param_principal() {
                 Some(principal) => view! { <WalletImpl principal /> }.into_any(),
                 None => {
+                    let auth = auth_state();
+                    let user_principal = auth.user_principal_for_suspense();
                     view! {
-                        <AuthCansProvider let:cans>
-                            {move || {
-                                view! {
-                                    <Redirect path=format!("/wallet/{}", cans.user_principal()) />
+                        <Suspense>
+                            {move || user_principal.get().map(|res| match res {
+                                Ok(user_principal) => view! {
+                                    <Redirect path=format!("/wallet/{user_principal}") />
+                                },
+                                Err(e) => view! {
+                                    <Redirect path=format!("/error?err={e}") />
                                 }
-                            }}
-                        </AuthCansProvider>
+                            })}
+                        </Suspense>
                     }.into_any()
                 }
             }
@@ -163,58 +166,37 @@ pub fn Wallet() -> impl IntoView {
 
 #[component]
 pub fn WalletImpl(principal: Principal) -> impl IntoView {
-    let (is_connected, _) = account_connected_reader();
     let show_login = RwSignal::new(false);
 
     provide_context(ShowLoginSignal(show_login));
 
-    let auth_cans = authenticated_canisters();
+    let cans = unauth_canisters();
 
-    let profile_info_res = Resource::new(
-        move || principal,
-        move |principal| {
-            send_wrap(async move {
-                let cans_wire = auth_cans.await;
-                let cans_wire = cans_wire?;
-                let canisters = Canisters::from_wire(cans_wire, expect_context())?;
+    let cans2 = cans.clone();
+    let canister_id = OnceResource::new(send_wrap(async move {
+        let canisters = cans2;
+        let user_canister = canisters
+            .get_individual_canister_by_user_principal(principal)
+            .await?
+            .ok_or_else(|| ServerFnError::new("Failed to get user canister"))?;
+        Ok::<_, ServerFnError>(user_canister)
+    }));
 
-                let Some(user_canister) = canisters
-                    .get_individual_canister_by_user_principal(principal)
-                    .await?
-                else {
-                    return Err(ServerFnError::new("Failed to get user canister"));
-                };
-                let user = canisters.individual_user(user_canister).await;
-                let user_details = user.get_profile_details().await?;
-                Ok::<ProfileDetails, ServerFnError>(user_details.into())
-            })
-        },
-    );
+    let profile_info_res = OnceResource::new(send_wrap(async move {
+        let user_canister = canister_id.await?;
+        let user = cans.individual_user(user_canister).await;
+        let user_details = user.get_profile_details().await?;
+        Ok::<ProfileDetails, ServerFnError>(user_details.into())
+    }));
 
-    let is_own_account = Resource::new(
-        move || principal,
-        move |principal| async move {
-            let cans_wire = auth_cans.await?;
-            let canisters = Canisters::from_wire(cans_wire, expect_context())?;
-            Ok::<_, ServerFnError>(canisters.user_principal() == principal)
-        },
-    );
-
-    let canister_id = Resource::new(
-        move || principal,
-        move |principal| {
-            send_wrap(async move {
-                let canisters = unauth_canisters();
-                let Some(user_canister) = canisters
-                    .get_individual_canister_by_user_principal(principal)
-                    .await?
-                else {
-                    return Err(ServerFnError::new("Failed to get user canister"));
-                };
-                Ok((user_canister, principal))
-            })
-        },
-    );
+    let auth = auth_state();
+    let is_connected = auth.is_logged_in_with_oauth();
+    let logged_in_principal = auth.user_principal_for_suspense();
+    let is_own_account = Signal::derive(move || {
+        logged_in_principal
+            .get()
+            .map(|res| res.map(|p| p == principal))
+    });
 
     let app_state = use_context::<AppState>();
     let page_title = app_state.unwrap().name.to_owned() + " - Wallet";
@@ -245,12 +227,13 @@ pub fn WalletImpl(principal: Principal) -> impl IntoView {
                 <Suspense>
                     {move || {
                         let canister_id = try_or_redirect_opt!(canister_id.get() ?);
+                        let logged_in_user = try_or_redirect_opt!(logged_in_principal.get()?);
                         Some(
                             view! {
                                 <div class="font-kumbh self-start pt-3 font-bold text-lg text-white">
                                     My tokens
                                 </div>
-                                <TokenList user_principal=canister_id.1 user_canister=canister_id.0 />
+                                <TokenList logged_in_user user_principal=principal user_canister=canister_id />
                             },
                         )
                     }}
