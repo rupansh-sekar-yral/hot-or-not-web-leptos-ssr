@@ -74,12 +74,14 @@ pub fn SinglePost() -> impl IntoView {
     let fetch_post = Resource::new(params, move |params| {
         send_wrap(async move {
             let params = params.map_err(|_| PostFetchError::Invalid)?;
-            let post_uid = if let Some(canisters) = auth.auth_cans_if_available() {
+            let unauth_cans = unauth_canisters();
+            let post_uid = if let Some(canisters) = auth.auth_cans_if_available(unauth_cans.clone())
+            {
                 canisters
                     .get_post_details(params.canister_id, params.post_id)
                     .await
             } else {
-                let canisters = unauth_canisters();
+                let canisters = unauth_cans;
                 canisters
                     .get_post_details(params.canister_id, params.post_id)
                     .await

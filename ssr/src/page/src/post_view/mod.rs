@@ -193,8 +193,8 @@ pub fn PostViewWithUpdatesMLFeed(initial_post: Option<PostDetails>) -> impl Into
                     return;
                 };
                 leptos::logging::log!("fetching ml feed");
-                let cans_true = auth.auth_cans_if_available();
                 let cans_false: Canisters<false> = unauth_canisters();
+                let cans_true = auth.auth_cans_if_available(cans_false.clone());
 
                 let video_queue_c = video_queue.get_untracked().iter().cloned().collect();
                 let chunks = if let Some(cans_true) = cans_true.as_ref() {

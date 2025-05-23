@@ -1,4 +1,4 @@
-use std::future::Future;
+use std::future::{Future, IntoFuture};
 
 use auth::{
     delegate_identity, extract_identity, generate_anonymous_identity_if_required,
@@ -9,6 +9,7 @@ use codee::string::FromToStringCodec;
 use consts::{
     ACCOUNT_CONNECTED_STORE, REFERRER_COOKIE, USER_CANISTER_ID_STORE, USER_PRINCIPAL_STORE,
 };
+use futures::FutureExt;
 use ic_agent::identity::Secp256k1Identity;
 use k256::elliptic_curve::JwkEcKey;
 use leptos::prelude::*;
@@ -324,10 +325,13 @@ impl AuthState {
     /// WARN: Use this very carefully, this function only exists for very fine-tuned optimizations
     /// for critical pages
     /// this definitely must not be used in DOM
-    pub fn auth_cans_if_available(&self) -> Option<Canisters<true>> {
-        self.canisters_resource.get_untracked().and_then(|c| {
-            let cans = c.ok()?;
-            Canisters::from_wire(cans, unauth_canisters()).ok()
-        })
+    pub fn auth_cans_if_available(&self, base: Canisters<false>) -> Option<Canisters<true>> {
+        self.canisters_resource
+            .into_future()
+            .now_or_never()
+            .and_then(|c| {
+                let cans_wire = c.ok()?;
+                Canisters::from_wire(cans_wire, base).ok()
+            })
     }
 }

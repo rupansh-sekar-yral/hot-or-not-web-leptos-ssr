@@ -64,10 +64,10 @@ fn ProfilePostWithUpdates<const LIMIT: u64, VidStream: ProfVideoStream<LIMIT>>(
     let next_videos: Action<_, _, LocalStorage> = Action::new_unsync(move |_| async move {
         let cursor = fetch_cursor.get_untracked();
 
-        let posts_res = if let Some(canisters) = auth.auth_cans_if_available() {
+        let canisters = unauth_canisters();
+        let posts_res = if let Some(canisters) = auth.auth_cans_if_available(canisters.clone()) {
             VidStream::fetch_next_posts(cursor, &canisters, user_canister).await
         } else {
-            let canisters = unauth_canisters();
             VidStream::fetch_next_posts(cursor, &canisters, user_canister).await
         };
 
