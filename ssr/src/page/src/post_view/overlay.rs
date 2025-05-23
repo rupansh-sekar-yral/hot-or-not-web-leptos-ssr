@@ -308,7 +308,9 @@ pub fn VideoDetailsOverlay(post: PostDetails) -> impl IntoView {
             } else {
                 if !nsfw_enabled() && show_nsfw_permission() {
                     show_nsfw_permission.set(false);
-                    if let Some(global) = MixpanelGlobalProps::from_ev_ctx(ev_ctx) {
+                    if let Some(global) =
+                        MixpanelGlobalProps::from_ev_ctx_with_nsfw_info(ev_ctx, false)
+                    {
                         let is_hot_or_not = true;
                         MixPanelEvent::track_video_clicked(MixpanelVideoClickedProps {
                             user_id: global.user_id,
@@ -326,10 +328,12 @@ pub fn VideoDetailsOverlay(post: PostDetails) -> impl IntoView {
                             like_count: post.likes,
                         });
                     }
-                    set_nsfw_enabled(!nsfw_enabled());
+                    set_nsfw_enabled(true);
                 } else {
-                    set_nsfw_enabled(!nsfw_enabled());
-                    if let Some(global) = MixpanelGlobalProps::from_ev_ctx(ev_ctx) {
+                    set_nsfw_enabled(false);
+                    if let Some(global) =
+                        MixpanelGlobalProps::from_ev_ctx_with_nsfw_info(ev_ctx, false)
+                    {
                         let is_hot_or_not = true;
                         MixPanelEvent::track_video_clicked(MixpanelVideoClickedProps {
                             user_id: global.user_id,
@@ -352,7 +356,7 @@ pub fn VideoDetailsOverlay(post: PostDetails) -> impl IntoView {
                 let window = window();
                 let _ = window
                     .location()
-                    .set_href(&format!("/?nsfw={}", nsfw_enabled()));
+                    .set_href(&format!("/?nsfw={}", nsfw_enabled.get_untracked()));
             }
         }
     });

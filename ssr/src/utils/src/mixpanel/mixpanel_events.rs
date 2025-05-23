@@ -70,11 +70,15 @@ impl MixpanelGlobalProps {
     }
 
     pub fn from_ev_ctx(ev_ctx: EventCtx) -> Option<Self> {
-        let user = ev_ctx.user_details()?;
         let (is_nsfw_enabled, _, _) =
             use_local_storage::<bool, FromToStringCodec>(NSFW_TOGGLE_STORE);
         let is_nsfw_enabled = is_nsfw_enabled.get_untracked();
 
+        Self::from_ev_ctx_with_nsfw_info(ev_ctx, is_nsfw_enabled)
+    }
+
+    pub fn from_ev_ctx_with_nsfw_info(ev_ctx: EventCtx, is_nsfw_enabled: bool) -> Option<Self> {
+        let user = ev_ctx.user_details()?;
         let is_logged_in = ev_ctx.is_connected();
 
         Some(Self {
@@ -84,6 +88,28 @@ impl MixpanelGlobalProps {
             canister_id: user.canister_id.to_text(),
             is_nsfw_enabled,
         })
+    }
+
+    pub fn try_get_with_nsfw_info(
+        cans: &Canisters<true>,
+        is_logged_in: bool,
+        is_nsfw_enabled: bool,
+    ) -> Self {
+        Self {
+            user_id: if is_logged_in {
+                Some(cans.user_principal().to_text())
+            } else {
+                None
+            },
+            visitor_id: if !is_logged_in {
+                Some(cans.user_principal().to_text())
+            } else {
+                None
+            },
+            is_logged_in,
+            canister_id: cans.user_canister().to_text(),
+            is_nsfw_enabled,
+        }
     }
 }
 
