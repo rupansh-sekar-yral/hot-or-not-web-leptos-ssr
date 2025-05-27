@@ -4,6 +4,7 @@ use crate::post_view::BetEligiblePostCtx;
 use component::{bullet_loader::BulletLoader, hn_icons::*, spinner::SpinnerFit};
 use hon_worker_common::{sign_vote_request, GameInfo, GameResult, WORKER_URL};
 use ic_agent::Identity;
+use leptos::html::Audio;
 use leptos::{either::Either, prelude::*};
 use leptos_icons::*;
 use server_impl::vote_with_cents_on_post;
@@ -160,7 +161,7 @@ fn HNButtonOverlay(
     });
     let place_bet_res = place_bet_action.value();
     Effect::new(move |_| {
-        if place_bet_res().flatten().is_some() {
+        if place_bet_res.get().flatten().is_some() {
             refetch_bet.notify();
         }
     });
@@ -305,6 +306,7 @@ pub fn HNUserParticipation(
     post: PostDetails,
     participation: GameInfo,
     refetch_bet: Trigger,
+    audio_ref: NodeRef<Audio>,
 ) -> impl IntoView {
     let (_, _) = (post, refetch_bet); // not sure if i will need these later
     let (vote_amount, game_result) = match participation {
@@ -319,6 +321,40 @@ pub fn HNUserParticipation(
     let vote_amount: u64 = vote_amount
         .try_into()
         .expect("We only allow voting with 200 max, so this is alright");
+    let won = matches!(game_result, GameResult::Win { .. });
+
+    fn play_win_sound_and_vibrate(audio_ref: NodeRef<Audio>, won: bool) {
+        #[cfg(not(feature = "hydrate"))]
+        {
+            _ = audio_ref;
+        }
+        #[cfg(feature = "hydrate")]
+        {
+            use wasm_bindgen::JsValue;
+            use web_sys::js_sys::Reflect;
+
+            let window = window();
+            let nav = window.navigator();
+            if Reflect::has(&nav, &JsValue::from_str("vibrate")).unwrap_or_default() {
+                nav.vibrate_with_duration(200);
+            } else {
+                log::debug!("browser does not support vibrate");
+            }
+            let Some(audio) = audio_ref.get() else {
+                return;
+            };
+            if won {
+                audio.set_current_time(0.);
+                audio.set_volume(0.5);
+                _ = audio.play();
+            }
+        }
+    }
+
+    Effect::new(move |_| {
+        play_win_sound_and_vibrate(audio_ref, won);
+    });
+
     view! {
         <HNWonLost game_result vote_amount />
         <ShadowBg />
@@ -344,7 +380,7 @@ fn ShadowBg() -> impl IntoView {
 }
 
 #[component]
-pub fn HNGameOverlay(post: PostDetails) -> impl IntoView {
+pub fn HNGameOverlay(post: PostDetails, win_audio_ref: NodeRef<Audio>) -> impl IntoView {
     let bet_direction = RwSignal::new(None::<VoteKind>);
     let coin = RwSignal::new(CoinState::C50);
 
@@ -403,7 +439,7 @@ pub fn HNGameOverlay(post: PostDetails) -> impl IntoView {
                         Some(
                             if let Some(participation) = participation {
                                 view! {
-                                    <HNUserParticipation post refetch_bet participation=participation.clone() />
+                                    <HNUserParticipation post refetch_bet participation=participation.clone() audio_ref=win_audio_ref />
                                 }.into_any()
                             } else {
                                 view! {

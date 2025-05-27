@@ -165,7 +165,9 @@ pub fn LoginProviders(
             // Update the context signal instead of writing directly
             show_modal.set(false);
 
-            if let Some(cb) = on_resolve { cb.run(user_principal) }
+            if let Some(cb) = on_resolve {
+                cb.run(user_principal)
+            }
 
             Ok::<_, ServerFnError>(())
         }

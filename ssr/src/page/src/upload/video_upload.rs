@@ -68,7 +68,7 @@ pub fn PreVideoUpload(
         });
     }
 
-    let upload_action: Action<(), _, LocalStorage> = Action::new_local(move |_| async move {
+    let upload_action: Action<(), _> = Action::new_local(move |_| async move {
         let message = try_or_redirect_opt!(upload_video_part(
             UPLOAD_URL,
             "file",
@@ -109,45 +109,45 @@ pub fn PreVideoUpload(
     });
 
     view! {
-        <label
-            for="dropzone-file"
-            class="w-[358px] h-[300px] sm:w-full sm:h-auto sm:min-h-[380px] sm:max-h-[70vh] lg:w-[627px] lg:h-[600px] bg-neutral-950 rounded-2xl border-2 border-dashed border-neutral-600 flex flex-col items-center justify-center cursor-pointer select-none p-0"
-        >
-            <Show when=move || { file.with(| file | file.is_none()) }>
-                <div class="flex flex-1 flex-col items-center justify-center w-full h-full gap-6">
-                    <div class="text-white text-[16px] font-semibold leading-tight text-center">Upload a video to share with the world!</div>
-                    <div class="text-neutral-400 text-[13px] leading-tight text-center">Drag & Drop or select video file ( Max 60s )</div>
-                    <span class="inline-block px-6 py-2 border border-pink-300 text-pink-300 rounded-lg font-medium text-[15px] bg-transparent transition-colors duration-150 cursor-pointer select-none">Select File</span>
-                </div>
-            </Show>
-            <video
-                node_ref=video_ref
-                class="w-full h-full object-contain rounded-xl bg-black p-2"
-                playsinline
-                muted
-                autoplay
-                loop
-                oncanplay="this.muted=true"
-                src=move || file.with(| file | file.as_ref().map(| f | f.url.to_string()))
-                style:display=move || {
-                    file.with(| file | file.as_ref().map(| _ | "block").unwrap_or("none"))
-                }
-            ></video>
-            <input
-                on:click=move |_| modal_show.set(true)
-                id="dropzone-file"
-                node_ref=file_ref
-                type="file"
-                accept="video/*"
-                class="hidden w-0 h-0"
-            />
-        </label>
-        <Modal show=modal_show>
-            <span class="text-lg md:text-xl text-white h-full items-center py-10 text-center w-full flex flex-col justify-center">
-                Please ensure that the video is shorter than 60 seconds
-            </span>
-        </Modal>
-    }
+            <label
+                for="dropzone-file"
+                class="w-[358px] h-[300px] sm:w-full sm:h-auto sm:min-h-[380px] sm:max-h-[70vh] lg:w-[627px] lg:h-[600px] bg-neutral-950 rounded-2xl border-2 border-dashed border-neutral-600 flex flex-col items-center justify-center cursor-pointer select-none p-0"
+            >
+                <Show when=move || { file.with(| file | file.is_none()) }>
+                    <div class="flex flex-1 flex-col items-center justify-center w-full h-full gap-6">
+                        <div class="text-white text-[16px] font-semibold leading-tight text-center">Upload a video to share with the world!</div>
+                        <div class="text-neutral-400 text-[13px] leading-tight text-center">Drag & Drop or select video file ( Max 60s )</div>
+                        <span class="inline-block px-6 py-2 border border-pink-300 text-pink-300 rounded-lg font-medium text-[15px] bg-transparent transition-colors duration-150 cursor-pointer select-none">Select File</span>
+                    </div>
+                </Show>
+                <video
+        node_ref=video_ref
+        class="w-full h-full object-contain rounded-xl bg-black p-2"
+        playsinline
+        muted
+        autoplay
+        loop
+        oncanplay="this.muted=true"
+        src=move || file.with(| file | file.as_ref().map(| f | f.url.to_string()))
+        style:display=move || {
+            file.with(| file | file.as_ref().map(| _ | "block").unwrap_or("none"))
+        }
+    ></video>
+                <input
+                    on:click=move |_| modal_show.set(true)
+                    id="dropzone-file"
+                    node_ref=file_ref
+                    type="file"
+                    accept="video/*"
+                    class="hidden w-0 h-0"
+                />
+            </label>
+            <Modal show=modal_show>
+                <span class="text-lg md:text-xl text-white h-full items-center py-10 text-center w-full flex flex-col justify-center">
+                    Please ensure that the video is shorter than 60 seconds
+                </span>
+            </Modal>
+        }
 }
 
 #[allow(dead_code)]
@@ -259,18 +259,17 @@ pub fn VideoUploader(
     let enable_hot_or_not = params.enable_hot_or_not;
 
     let auth = auth_state();
-    let ev_ctx = auth.event_ctx();
     let is_connected = auth.is_logged_in_with_oauth();
+    let ev_ctx = auth.event_ctx();
 
-    let base = unauth_canisters();
-    let publish_action: Action<_, _, LocalStorage> = Action::new_unsync(move |&()| {
+    let publish_action: Action<_, _> = Action::new_unsync(move |&()| {
+        let unauth_cans = unauth_canisters();
         let hashtags = hashtags.clone();
         let hashtags_len = hashtags.len();
         let description = description.clone();
         let uid = uid.get_untracked().unwrap();
-        let base = base.clone();
         async move {
-            let canisters = auth.auth_cans(base).await.ok()?;
+            let canisters = auth.auth_cans(unauth_cans).await.ok()?;
             let id = canisters.identity();
             let delegated_identity = delegate_short_lived_identity(id);
             let res: std::result::Result<reqwest::Response, ServerFnError> = {
@@ -342,9 +341,7 @@ pub fn VideoUploader(
         }
     });
 
-    Effect::new(move |_| {
-        publish_action.dispatch(());
-    });
+    Effect::new(move |_| publish_action.dispatch(()));
 
     view! {
         <div class="flex flex-col-reverse lg:flex-row w-full gap-4 lg:gap-20 mx-auto justify-center items-center min-h-screen bg-transparent p-0">

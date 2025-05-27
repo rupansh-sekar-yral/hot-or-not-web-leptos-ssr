@@ -7,7 +7,7 @@ use yral_canisters_common::utils::profile::ProfileDetails;
 
 #[component]
 fn NotifInnerComponent(details: ProfileDetails) -> impl IntoView {
-    let on_token_click: Action<(), (), LocalStorage> = Action::new_unsync(move |()| async move {
+    let on_token_click: Action<(), ()> = Action::new_unsync(move |()| async move {
         get_token_for_principal(details.principal.to_string()).await;
     });
 

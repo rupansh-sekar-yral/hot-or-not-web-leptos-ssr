@@ -20,7 +20,7 @@ fn YoutubeUploadInner(#[prop(optional)] url: String) -> impl IntoView {
 
     let auth = auth_state();
     let base = unauth_canisters();
-    let on_submit: Action<(), String, LocalStorage> = Action::new_unsync(move |_| {
+    let on_submit: Action<(), String> = Action::new_unsync(move |_| {
         let base = base.clone();
         async move {
             let cans = match auth.auth_cans(base).await {
@@ -71,7 +71,7 @@ fn YoutubeUploadInner(#[prop(optional)] url: String) -> impl IntoView {
                             Submit
                         </button>
                         <p class="text-base md:text-lg text-white">
-                            {move || submit_res().unwrap_or_default()}
+                            {move || submit_res.get().unwrap_or_default()}
                         </p>
                     </div>
                 </div>
