@@ -21,6 +21,8 @@ use utils::send_wrap;
 use yral_canisters_common::Canisters;
 use yral_types::delegated_identity::DelegatedIdentityWire;
 
+use crate::spinner::Spinner;
+
 #[server]
 async fn issue_referral_rewards(referee_canister: Principal) -> Result<(), ServerFnError> {
     use self::server_fn_impl::issue_referral_rewards_impl;
@@ -144,11 +146,17 @@ pub fn LoginProviders(
         let cans = cans.clone();
         // Capture the context signal setter
         async move {
+            let new_principal = Principal::self_authenticating(&id.from_key);
+
             let referrer = auth.referrer_store.get_untracked();
             auth.set_new_identity(id, true);
 
-            let canisters = auth.auth_cans(cans).await?;
-            let user_principal = canisters.user_principal();
+            let canisters = loop {
+                let cans = auth.auth_cans(cans.clone()).await?;
+                if cans.user_principal() == new_principal {
+                    break cans;
+                }
+            };
 
             if let Err(e) = send_wrap(handle_user_login(
                 canisters.clone(),
@@ -166,12 +174,14 @@ pub fn LoginProviders(
             show_modal.set(false);
 
             if let Some(cb) = on_resolve {
-                cb.run(user_principal)
+                cb.run(new_principal)
             }
 
             Ok::<_, ServerFnError>(())
         }
     });
+
+    let logging_in = login_action.pending();
 
     let ctx = LoginProvCtx {
         processing: processing.read_only(),
@@ -188,26 +198,35 @@ pub fn LoginProviders(
 
     view! {
         <div class="flex flex-col py-12 px-16 items-center gap-2 bg-neutral-900 text-white cursor-auto">
-        <h1 class="text-xl">Login to Yral</h1>
-        <img class="h-32 w-32 object-contain my-8" src="/img/yral/logo.webp" />
-        <span class="text-md">Continue with</span>
-        <div class="flex flex-col w-full gap-4 items-center">
+            <h1 class="text-xl">Login to Yral</h1>
+            <img class="h-32 w-32 object-contain my-8" src="/img/yral/logo.webp" />
+            <Show when=logging_in>
+                <div class="flex flex-col items-center gap-4 px-4 w-full">
+                    <span class="text-md">Logging in...</span>
+                    <Spinner/>
+                </div>
+            </Show>
+            <Show when=move || !logging_in.get()>
 
-            {
-                #[cfg(feature = "local-auth")]
-                view! {
-                    <local_storage::LocalStorageProvider></local_storage::LocalStorageProvider>
-                }
-            }
-            {
-                #[cfg(any(feature = "oauth-ssr", feature = "oauth-hydrate"))]
-                view! { <google::GoogleAuthProvider></google::GoogleAuthProvider> }
-            }
-            <div id="tnc" class="text-white text-center">
-                By continuing you agree to our <a class="text-primary-600 underline" href="/terms-of-service">Terms of Service</a>
-            </div>
+                <span class="text-md">Continue with</span>
+                <div class="flex flex-col w-full gap-4 items-center">
+
+                    {
+                        #[cfg(feature = "local-auth")]
+                        view! {
+                            <local_storage::LocalStorageProvider></local_storage::LocalStorageProvider>
+                        }
+                    }
+                    {
+                        #[cfg(any(feature = "oauth-ssr", feature = "oauth-hydrate"))]
+                        view! { <google::GoogleAuthProvider></google::GoogleAuthProvider> }
+                    }
+                    <div id="tnc" class="text-white text-center">
+                        By continuing you agree to our <a class="text-primary-600 underline" href="/terms-of-service">Terms of Service</a>
+                    </div>
+                </div>
+            </Show>
         </div>
-    </div>
     }
 }
 
