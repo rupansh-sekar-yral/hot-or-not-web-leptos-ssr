@@ -9,7 +9,6 @@ use ic_agent::Identity;
 use leptos::prelude::ServerFnError;
 use leptos::{ev, prelude::*, reactive::wrappers::write::SignalSetter};
 use state::canisters::auth_state;
-use state::canisters::unauth_canisters;
 use utils::event_streaming::events::CentsAdded;
 use utils::event_streaming::events::EventCtx;
 use utils::event_streaming::events::{LoginMethodSelected, LoginSuccessful, ProviderKind};
@@ -20,8 +19,6 @@ use utils::mixpanel::mixpanel_events::MixpanelSignupSuccessProps;
 use utils::send_wrap;
 use yral_canisters_common::Canisters;
 use yral_types::delegated_identity::DelegatedIdentityWire;
-
-use crate::spinner::Spinner;
 
 #[server]
 async fn issue_referral_rewards(referee_canister: Principal) -> Result<(), ServerFnError> {
@@ -136,27 +133,20 @@ pub fn LoginProviders(
     on_resolve: Option<Callback<Principal>>,
 ) -> impl IntoView {
     let auth = auth_state();
-    let cans = unauth_canisters();
 
     let processing = RwSignal::new(None);
 
     let login_action = Action::new(move |id: &DelegatedIdentityWire| {
         // Clone the necessary parts
         let id = id.clone();
-        let cans = cans.clone();
         // Capture the context signal setter
-        async move {
+        send_wrap(async move {
             let new_principal = Principal::self_authenticating(&id.from_key);
 
             let referrer = auth.referrer_store.get_untracked();
-            auth.set_new_identity(id, true);
+            auth.set_new_identity(id.clone(), true);
 
-            let canisters = loop {
-                let cans = auth.auth_cans(cans.clone()).await?;
-                if cans.user_principal() == new_principal {
-                    break cans;
-                }
-            };
+            let canisters = Canisters::authenticate_with_network(id, referrer).await?;
 
             if let Err(e) = send_wrap(handle_user_login(
                 canisters.clone(),
@@ -178,10 +168,8 @@ pub fn LoginProviders(
             show_modal.set(false);
 
             Ok::<_, ServerFnError>(())
-        }
+        })
     });
-
-    let logging_in = login_action.pending();
 
     let ctx = LoginProvCtx {
         processing: processing.read_only(),
@@ -200,32 +188,23 @@ pub fn LoginProviders(
         <div class="flex flex-col py-12 px-16 items-center gap-2 bg-neutral-900 text-white cursor-auto">
             <h1 class="text-xl">Login to Yral</h1>
             <img class="h-32 w-32 object-contain my-8" src="/img/yral/logo.webp" />
-            <Show when=logging_in>
-                <div class="flex flex-col items-center gap-4 px-4 w-full">
-                    <span class="text-md">Logging in...</span>
-                    <Spinner/>
-                </div>
-            </Show>
-            <Show when=move || !logging_in.get()>
+            <span class="text-md">Continue with</span>
+            <div class="flex flex-col w-full gap-4 items-center">
 
-                <span class="text-md">Continue with</span>
-                <div class="flex flex-col w-full gap-4 items-center">
-
-                    {
-                        #[cfg(feature = "local-auth")]
-                        view! {
-                            <local_storage::LocalStorageProvider></local_storage::LocalStorageProvider>
-                        }
+                {
+                    #[cfg(feature = "local-auth")]
+                    view! {
+                        <local_storage::LocalStorageProvider></local_storage::LocalStorageProvider>
                     }
-                    {
-                        #[cfg(any(feature = "oauth-ssr", feature = "oauth-hydrate"))]
-                        view! { <google::GoogleAuthProvider></google::GoogleAuthProvider> }
-                    }
-                    <div id="tnc" class="text-white text-center">
-                        By continuing you agree to our <a class="text-primary-600 underline" href="/terms-of-service">Terms of Service</a>
-                    </div>
+                }
+                {
+                    #[cfg(any(feature = "oauth-ssr", feature = "oauth-hydrate"))]
+                    view! { <google::GoogleAuthProvider></google::GoogleAuthProvider> }
+                }
+                <div id="tnc" class="text-white text-center">
+                    By continuing you agree to our <a class="text-primary-600 underline" href="/terms-of-service">Terms of Service</a>
                 </div>
-            </Show>
+            </div>
         </div>
     }
 }
