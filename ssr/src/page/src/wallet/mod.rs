@@ -12,6 +12,7 @@ use component::toggle::Toggle;
 use consts::NOTIFICATIONS_ENABLED_STORE;
 use leptos::either::Either;
 use leptos::html::Input;
+use leptos::web_sys::{Notification, NotificationPermission};
 use leptos::{ev, prelude::*};
 use leptos_meta::*;
 use leptos_router::components::Redirect;
@@ -24,7 +25,6 @@ use state::canisters::{auth_state, unauth_canisters};
 use tokens::TokenList;
 use utils::notifications::get_device_registeration_token;
 use utils::send_wrap;
-use web_sys::{Notification, NotificationPermission};
 use yral_canisters_common::utils::profile::ProfileDetails;
 use yral_metadata_client::MetadataClient;
 
