@@ -170,12 +170,12 @@ pub fn LoginProviders(
 
             let _ = LoginSuccessful.send_event(canisters);
 
-            // Update the context signal instead of writing directly
-            show_modal.set(false);
-
             if let Some(cb) = on_resolve {
                 cb.run(new_principal)
             }
+
+            // Update the context signal instead of writing directly
+            show_modal.set(false);
 
             Ok::<_, ServerFnError>(())
         }
