@@ -1,3 +1,4 @@
+use consts::auth::REFRESH_MAX_AGE;
 use leptos::prelude::*;
 use leptos_router::components::Outlet;
 use leptos_use::{use_cookie_with_options, UseCookieOptions};
@@ -33,7 +34,9 @@ fn CtxProvider(children: Children) -> impl IntoView {
     // migrates account connected local storage to cookie
     let (_, set_new_account_connected_store) = use_cookie_with_options::<bool, FromToStringCodec>(
         ACCOUNT_CONNECTED_STORE,
-        UseCookieOptions::default().path("/"),
+        UseCookieOptions::default()
+            .path("/")
+            .max_age(REFRESH_MAX_AGE.as_millis() as i64),
     );
     let (old_account_connected_store, _, clear_from_storage) =
         use_local_storage::<bool, FromToStringCodec>(ACCOUNT_CONNECTED_STORE);

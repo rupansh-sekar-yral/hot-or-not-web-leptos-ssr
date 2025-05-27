@@ -7,7 +7,8 @@ use auth::{
 use candid::Principal;
 use codee::string::FromToStringCodec;
 use consts::{
-    ACCOUNT_CONNECTED_STORE, REFERRER_COOKIE, USER_CANISTER_ID_STORE, USER_PRINCIPAL_STORE,
+    auth::REFRESH_MAX_AGE, ACCOUNT_CONNECTED_STORE, AUTH_UTIL_COOKIES_MAX_AGE_MS, REFERRER_COOKIE,
+    USER_CANISTER_ID_STORE, USER_PRINCIPAL_STORE,
 };
 use futures::FutureExt;
 use ic_agent::identity::Secp256k1Identity;
@@ -87,7 +88,9 @@ impl Default for AuthState {
         let (referrer_cookie, set_referrer_cookie) =
             use_cookie_with_options::<Principal, FromToStringCodec>(
                 REFERRER_COOKIE,
-                UseCookieOptions::default().path("/"),
+                UseCookieOptions::default()
+                    .path("/")
+                    .max_age(AUTH_UTIL_COOKIES_MAX_AGE_MS),
             );
         let referrer_query = use_query::<Referrer>();
         let referrer_principal = Signal::derive(move || {
@@ -106,7 +109,9 @@ impl Default for AuthState {
 
         let is_logged_in_with_oauth = use_cookie_with_options::<bool, FromToStringCodec>(
             ACCOUNT_CONNECTED_STORE,
-            UseCookieOptions::default().path("/"),
+            UseCookieOptions::default()
+                .path("/")
+                .max_age(REFRESH_MAX_AGE.as_millis() as i64),
         );
 
         let new_identity_setter = RwSignal::new(None::<DelegatedIdentityWire>);
@@ -160,7 +165,9 @@ impl Default for AuthState {
 
         let user_principal_cookie = use_cookie_with_options::<Principal, FromToStringCodec>(
             USER_PRINCIPAL_STORE,
-            UseCookieOptions::default().path("/"),
+            UseCookieOptions::default()
+                .path("/")
+                .max_age(AUTH_UTIL_COOKIES_MAX_AGE_MS),
         );
         let user_principal = Resource::new(
             move || {
@@ -182,7 +189,9 @@ impl Default for AuthState {
 
         let user_canister_id_cookie = use_cookie_with_options::<Principal, FromToStringCodec>(
             USER_CANISTER_ID_STORE,
-            UseCookieOptions::default().path("/"),
+            UseCookieOptions::default()
+                .path("/")
+                .max_age(AUTH_UTIL_COOKIES_MAX_AGE_MS),
         );
         let user_canister = Resource::new(
             move || {

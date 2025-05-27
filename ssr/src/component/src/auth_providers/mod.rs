@@ -126,8 +126,13 @@ fn LoginProvButton<Cb: Fn(ev::MouseEvent) + 'static>(
     }
 }
 
+/// on_resolve -> a callback that returns the new principal
 #[component]
-pub fn LoginProviders(show_modal: RwSignal<bool>, lock_closing: RwSignal<bool>) -> impl IntoView {
+pub fn LoginProviders(
+    show_modal: RwSignal<bool>,
+    lock_closing: RwSignal<bool>,
+    on_resolve: Option<Callback<Principal>>,
+) -> impl IntoView {
     let auth = auth_state();
     let cans = unauth_canisters();
 
@@ -142,8 +147,8 @@ pub fn LoginProviders(show_modal: RwSignal<bool>, lock_closing: RwSignal<bool>) 
             let referrer = auth.referrer_store.get_untracked();
             auth.set_new_identity(id, true);
 
-            // This is some redundant work, but saves us 100+ lines of resource handling
             let canisters = auth.auth_cans(cans).await?;
+            let user_principal = canisters.user_principal();
 
             if let Err(e) = send_wrap(handle_user_login(
                 canisters.clone(),
@@ -159,6 +164,8 @@ pub fn LoginProviders(show_modal: RwSignal<bool>, lock_closing: RwSignal<bool>) 
 
             // Update the context signal instead of writing directly
             show_modal.set(false);
+
+            if let Some(cb) = on_resolve { cb.run(user_principal) }
 
             Ok::<_, ServerFnError>(())
         }

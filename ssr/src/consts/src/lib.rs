@@ -61,6 +61,8 @@ pub const CLOUDFLARE_ACCOUNT_ID: &str = "a209c523d2d9646cc56227dbe6ce3ede";
 pub const NEW_USER_SIGNUP_REWARD: u64 = 1000;
 pub const REFERRAL_REWARD: u64 = 500;
 
+pub const AUTH_UTIL_COOKIES_MAX_AGE_MS: i64 = 400 * 24 * 60 * 60 * 1000; // 400 days
+
 pub mod social {
     pub const TELEGRAM_YRAL: &str = "https://t.me/+c-LTX0Cp-ENmMzI1";
     pub const TELEGRAM_PND: &str = "https://t.me/Pump_Dump_dapp";

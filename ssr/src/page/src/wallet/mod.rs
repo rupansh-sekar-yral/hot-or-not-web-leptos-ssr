@@ -4,7 +4,7 @@ pub mod transactions;
 pub mod txn;
 
 use candid::Principal;
-use component::connect::ConnectLogin;
+use component::connect::{on_connect_redirect_callback, ConnectLogin};
 use component::icons::notification_icon::NotificationIcon;
 use component::share_popup::ShareButtonWithFallbackPopup;
 use leptos::either::Either;
@@ -29,6 +29,7 @@ fn ProfileCard(
     details: ProfileDetails,
     is_own_account: bool,
     is_connected: Signal<bool>,
+    logged_in_user: Principal,
 ) -> impl IntoView {
     let ShowLoginSignal(show_login) = expect_context();
     view! {
@@ -51,6 +52,7 @@ fn ProfileCard(
                     show_login
                     login_text="Login to claim your Cents"
                     cta_location="wallet"
+                    on_resolve=on_connect_redirect_callback(logged_in_user, |new_principal| format!("/wallet/{new_principal}"))
                 />
             </Show>
         </div>
@@ -230,7 +232,7 @@ pub fn WalletImpl(principal: Principal) -> impl IntoView {
                             Ok((profile_details, logged_in_user)) => {
                                 let is_own_account = logged_in_user == principal;
                                 Either::Left(view! {
-                                    <ProfileCard details=profile_details is_connected is_own_account />
+                                    <ProfileCard details=profile_details is_connected is_own_account logged_in_user />
                                 })
                             }
                             Err(e) => {

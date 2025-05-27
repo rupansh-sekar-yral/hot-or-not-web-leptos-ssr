@@ -1,7 +1,7 @@
 use crate::nav_icons::*;
 use candid::Principal;
 use codee::string::FromToStringCodec;
-use consts::USER_PRINCIPAL_STORE;
+use consts::{AUTH_UTIL_COOKIES_MAX_AGE_MS, USER_PRINCIPAL_STORE};
 use leptos::{either::Either, prelude::*};
 use leptos_icons::*;
 use leptos_router::hooks::use_location;
@@ -29,7 +29,9 @@ fn pnd_nav_items() -> Vec<NavItem> {
     let path = cur_location.pathname;
     let (user_principal, _) = use_cookie_with_options::<Principal, FromToStringCodec>(
         USER_PRINCIPAL_STORE,
-        UseCookieOptions::default().path("/"),
+        UseCookieOptions::default()
+            .path("/")
+            .max_age(AUTH_UTIL_COOKIES_MAX_AGE_MS),
     );
     let home_path = RwSignal::new("/".to_string());
     vec![
@@ -86,7 +88,9 @@ fn yral_nav_items() -> Vec<NavItem> {
     let path = cur_location.pathname;
     let (user_principal, _) = use_cookie_with_options::<Principal, FromToStringCodec>(
         USER_PRINCIPAL_STORE,
-        UseCookieOptions::default().path("/"),
+        UseCookieOptions::default()
+            .path("/")
+            .max_age(AUTH_UTIL_COOKIES_MAX_AGE_MS),
     );
     let home_path = RwSignal::new("/".to_string());
     vec![
@@ -149,7 +153,9 @@ fn icpump_nav_items() -> Vec<NavItem> {
     let path = cur_location.pathname;
     let (user_principal, _) = use_cookie_with_options::<Principal, FromToStringCodec>(
         USER_PRINCIPAL_STORE,
-        UseCookieOptions::default().path("/"),
+        UseCookieOptions::default()
+            .path("/")
+            .max_age(AUTH_UTIL_COOKIES_MAX_AGE_MS),
     );
     let home_path = RwSignal::new("/".to_string());
     vec![
