@@ -9,7 +9,6 @@ use leptos_use::storage::use_local_storage;
 use state::canisters::AuthState;
 use utils::event_streaming::events::PageVisit;
 use utils::sentry::{set_sentry_user, set_sentry_user_canister};
-use web_sys::CustomEvent;
 
 #[derive(Clone)]
 pub struct Notification(pub RwSignal<Option<serde_json::Value>>);
@@ -36,7 +35,7 @@ fn CtxProvider(children: Children) -> impl IntoView {
     let _ = use_event_listener(
         window_target,
         ev::Custom::new("firebaseForegroundMessage"),
-        move |event: CustomEvent| {
+        move |event: leptos::web_sys::CustomEvent| {
             let payload = event.detail();
             notification.0.set(payload.as_string().and_then(|s| {
                 log::info!("Payload: {s}");
