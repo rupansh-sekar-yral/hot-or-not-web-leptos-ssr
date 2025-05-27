@@ -8,6 +8,7 @@ use consts::REFERRAL_REWARD;
 use ic_agent::Identity;
 use leptos::prelude::ServerFnError;
 use leptos::{ev, prelude::*, reactive::wrappers::write::SignalSetter};
+use leptos_router::hooks::use_navigate;
 use state::canisters::auth_state;
 use utils::event_streaming::events::CentsAdded;
 use utils::event_streaming::events::EventCtx;
@@ -130,7 +131,7 @@ fn LoginProvButton<Cb: Fn(ev::MouseEvent) + 'static>(
 pub fn LoginProviders(
     show_modal: RwSignal<bool>,
     lock_closing: RwSignal<bool>,
-    on_resolve: Option<Callback<Principal>>,
+    redirect_to: Option<String>,
 ) -> impl IntoView {
     let auth = auth_state();
 
@@ -139,29 +140,23 @@ pub fn LoginProviders(
     let login_action = Action::new(move |id: &DelegatedIdentityWire| {
         // Clone the necessary parts
         let id = id.clone();
+        let redirect_to = redirect_to.clone();
         // Capture the context signal setter
         send_wrap(async move {
-            let new_principal = Principal::self_authenticating(&id.from_key);
-
             let referrer = auth.referrer_store.get_untracked();
             auth.set_new_identity(id.clone(), true);
 
             let canisters = Canisters::authenticate_with_network(id, referrer).await?;
 
-            if let Err(e) = send_wrap(handle_user_login(
-                canisters.clone(),
-                auth.event_ctx(),
-                referrer,
-            ))
-            .await
-            {
+            if let Err(e) = handle_user_login(canisters.clone(), auth.event_ctx(), referrer).await {
                 log::warn!("failed to handle user login, err {e}. skipping");
             }
 
             let _ = LoginSuccessful.send_event(canisters);
 
-            if let Some(cb) = on_resolve {
-                cb.run(new_principal)
+            if let Some(redir_loc) = redirect_to {
+                let nav = use_navigate();
+                nav(&redir_loc, Default::default());
             }
 
             // Update the context signal instead of writing directly

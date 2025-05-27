@@ -7,7 +7,7 @@ mod speculation;
 mod tokens;
 
 use candid::Principal;
-use component::connect::{on_connect_redirect_callback, ConnectLogin};
+use component::connect::ConnectLogin;
 use indexmap::IndexSet;
 use leptos::prelude::*;
 use leptos_icons::*;
@@ -44,17 +44,18 @@ struct TabsParam {
 #[component]
 fn ListSwitcher1(user_canister: Principal, user_principal: Principal) -> impl IntoView {
     let param = use_params::<TabsParam>();
+    let tab = Signal::derive(move || {
+        param
+            .get()
+            .map(|t| t.tab)
+            .unwrap_or_else(move |_| "tokens".to_string())
+    });
 
-    let current_tab = Memo::new(move |_| {
-        param.with(|p| {
-            let tab = p.as_ref().map(|p| p.tab.as_str()).unwrap_or("tokens");
-            match tab {
-                "posts" => 0,
-                "stakes" => 1,
-                "tokens" => 2,
-                _ => 0,
-            }
-        })
+    let current_tab = Memo::new(move |_| match tab.get().as_str() {
+        "posts" => 0,
+        "stakes" => 1,
+        "tokens" => 2,
+        _ => 0,
     });
 
     let tab_class = move |tab_id: usize| {
@@ -134,10 +135,7 @@ fn ProfileViewInner(user: ProfileDetails, user_canister: Principal) -> impl Into
                                         <div class="md:w-4/12 w-6/12 pt-5">
                                             <ConnectLogin
                                                 cta_location="profile"
-                                                on_resolve=on_connect_redirect_callback(
-                                                    user_principal,
-                                                    |new_principal| format!("/profile/{new_principal}/posts")
-                                                ) 
+                                                redirect_to=format!("/profile/posts")
                                             />
                                         </div>
                                     </Show>
