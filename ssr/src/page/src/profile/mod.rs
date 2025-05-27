@@ -132,7 +132,13 @@ fn ProfileViewInner(user: ProfileDetails, user_canister: Principal) -> impl Into
                                 view! {
                                     <Show when=move || !is_connected() && v == Ok(user_principal)>
                                         <div class="md:w-4/12 w-6/12 pt-5">
-                                            <ConnectLogin cta_location="profile" on_resolve=on_connect_redirect_callback(user_principal, |new_principal| format!("/profile/{new_principal}")) />
+                                            <ConnectLogin
+                                                cta_location="profile"
+                                                on_resolve=on_connect_redirect_callback(
+                                                    user_principal,
+                                                    |new_principal| format!("/profile/{new_principal}/posts")
+                                                ) 
+                                            />
                                         </div>
                                     </Show>
                                 }
