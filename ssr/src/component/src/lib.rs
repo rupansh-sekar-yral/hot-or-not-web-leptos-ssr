@@ -18,6 +18,8 @@ pub mod login_modal;
 pub mod modal;
 pub mod nav;
 pub mod nav_icons;
+pub mod notification_display;
+pub mod notification_nudge;
 pub mod onboarding_flow;
 pub mod option;
 pub mod overlay;

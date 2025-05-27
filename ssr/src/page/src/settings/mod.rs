@@ -5,14 +5,20 @@ use component::{social::*, toggle::Toggle};
 use consts::NOTIFICATIONS_ENABLED_STORE;
 use leptos::either::Either;
 use leptos::html::Input;
+use leptos::web_sys::{Notification, NotificationPermission};
 use leptos::{ev, prelude::*};
 use leptos_icons::*;
 use leptos_router::components::Redirect;
 use leptos_use::storage::use_local_storage;
 use leptos_use::use_event_listener;
 use state::canisters::auth_state;
-use utils::notifications::get_token_for_principal;
+use utils::host::{show_cdao_page, show_pnd_page};
+use utils::notifications::{
+    get_device_registeration_token, get_fcm_token, notification_permission_granted,
+};
 use yral_canisters_common::utils::profile::ProfileDetails;
+use yral_metadata_client::MetadataClient;
+use yral_metadata_types::error::ApiError;
 
 #[component]
 #[allow(dead_code)]
@@ -78,18 +84,134 @@ fn ProfileLoading() -> impl IntoView {
 }
 
 #[component]
-fn EnableNotifications(user_details: ProfileDetails) -> impl IntoView {
+fn ProfileLoaded(user_details: ProfileDetails) -> impl IntoView {
+    let auth_state = auth_state();
+    let is_connected = auth_state.is_logged_in_with_oauth();
+
+    view! {
+        <div class="basis-4/12 aspect-square overflow-clip rounded-full">
+            <img class="h-full w-full object-cover" src=user_details.profile_pic_or_random() />
+        </div>
+        <div
+            class="flex flex-col basis-8/12"
+            class=("w-12/12", move || !is_connected())
+            class=("sm:w-5/12", move || !is_connected())
+        >
+            <span class="text-white text-ellipsis line-clamp-1 text-xl">
+                {user_details.display_name_or_fallback()}
+            </span>
+            <a class="text-primary-600 text-md" href={
+                if show_pnd_page(){
+                    "/pnd/profile".to_string()
+                } else if show_cdao_page(){
+                    "/profile/token".to_string()
+                }else{
+                    "/profile/posts".to_string()
+                }
+            }>
+                View Profile
+            </a>
+        </div>
+    }
+}
+
+#[component]
+fn ProfileInfo() -> impl IntoView {
+    let auth = auth_state();
+    view! {
+        <Suspense fallback=ProfileLoading>
+            {move || Suspend::new(async move {
+                let res = auth.cans_wire().await;
+                match res {
+                    Ok(cans) => {
+                        let user_details = cans.profile_details;
+                        Either::Left(view! { <ProfileLoaded user_details/> })
+                    }
+                    Err(e) => {
+                        Either::Right(view! { <Redirect path=format!("/error?err={e}") /> })
+                    }
+                }
+            })}
+        </Suspense>
+    }
+}
+
+#[component]
+fn EnableNotifications() -> impl IntoView {
     let (notifs_enabled, set_notifs_enabled, _) =
         use_local_storage::<bool, FromToStringCodec>(NOTIFICATIONS_ENABLED_STORE);
+
+    let notifs_enabled_der = Signal::derive(move || {
+        notifs_enabled.get()
+            && matches!(Notification::permission(), NotificationPermission::Granted)
+    });
+
     let toggle_ref = NodeRef::<Input>::new();
 
+    let auth = auth_state();
+
     let on_token_click: Action<(), ()> = Action::new_unsync(move |()| async move {
-        get_token_for_principal(user_details.principal.to_string()).await;
+        let metaclient: MetadataClient<false> = MetadataClient::default();
+
+        let cans = auth.auth_cans(expect_context()).await.unwrap();
+
+        let browser_permission = Notification::permission();
+        let notifs_enabled_val = notifs_enabled.get_untracked();
+
+        if notifs_enabled_val && matches!(browser_permission, NotificationPermission::Default) {
+            match notification_permission_granted().await {
+                Ok(true) => {
+                    let token = get_fcm_token().await.unwrap();
+                    metaclient
+                        .register_device(cans.identity(), token)
+                        .await
+                        .unwrap();
+                    log::info!("Device re-registered after ghost state");
+                    set_notifs_enabled(true);
+                }
+                Ok(false) => {
+                    log::warn!("User did not grant notification permission after prompt");
+                }
+                Err(e) => {
+                    log::error!("Failed to check notification permission: {e:?}");
+                }
+            }
+        } else if notifs_enabled_val {
+            let token = get_device_registeration_token().await.unwrap();
+            match metaclient.unregister_device(cans.identity(), token).await {
+                Ok(_) => {
+                    log::info!("Device unregistered sucessfully");
+                    set_notifs_enabled(false)
+                }
+                Err(e) => {
+                    if let yral_metadata_client::Error::Api(ApiError::DeviceNotFound) = e {
+                        log::info!("Device not found, skipping unregister");
+                        set_notifs_enabled(false)
+                    } else {
+                        log::error!("Failed to unregister device: {e:?}");
+                    }
+                }
+            }
+        } else {
+            let token = get_device_registeration_token().await.unwrap();
+            let register_result = metaclient
+                .register_device(cans.identity(), token.clone())
+                .await;
+            match register_result {
+                Ok(_) => {
+                    log::info!("Device registered successfully");
+                    set_notifs_enabled(true);
+                }
+                Err(e) => {
+                    log::error!("Failed to register device: {e:?}");
+                    set_notifs_enabled(false);
+                }
+            }
+        }
     });
 
     _ = use_event_listener(toggle_ref, ev::change, move |_| {
         on_token_click.dispatch(());
-        set_notifs_enabled(true)
     });
 
     view! {
@@ -99,7 +221,7 @@ fn EnableNotifications(user_details: ProfileDetails) -> impl IntoView {
                 <span>Enable Notifications</span>
             </div>
             <div class="justify-self-end">
-                <Toggle checked=notifs_enabled node_ref=toggle_ref />
+                <Toggle checked=notifs_enabled_der node_ref=toggle_ref />
             </div>
         </div>
     }
@@ -107,7 +229,6 @@ fn EnableNotifications(user_details: ProfileDetails) -> impl IntoView {
 
 #[component]
 pub fn Settings() -> impl IntoView {
-    let auth = auth_state();
     view! {
         <div class="min-h-screen w-full flex flex-col text-white pt-2 pb-12 bg-black items-center divide-y divide-white/10">
             <div class="flex flex-col items-center w-full gap-20 pb-16">
@@ -120,19 +241,7 @@ pub fn Settings() -> impl IntoView {
                 </TitleText>
             </div>
             <div class="flex flex-col py-12 px-8 gap-8 w-full text-lg">
-                <Suspense>
-                {move || Suspend::new(async move {
-                    let res = auth.cans_wire().await;
-                    match res {
-                        Ok(cans_wire) => Either::Left(view! {
-                            <EnableNotifications user_details=cans_wire.profile_details />
-                        }),
-                        Err(e) => Either::Right(view! {
-                            <Redirect path=format!("/error?err={e}") />
-                        })
-                    }
-                })}
-                </Suspense>
+                <EnableNotifications />
             </div>
             <MenuFooter />
         </div>

@@ -1,7 +1,7 @@
 use consts::auth::REFRESH_MAX_AGE;
-use leptos::prelude::*;
+use leptos::{ev, prelude::*};
 use leptos_router::components::Outlet;
-use leptos_use::{use_cookie_with_options, UseCookieOptions};
+use leptos_use::{use_cookie_with_options, use_event_listener, use_window, UseCookieOptions};
 
 use codee::string::FromToStringCodec;
 use consts::ACCOUNT_CONNECTED_STORE;
@@ -9,6 +9,10 @@ use leptos_use::storage::use_local_storage;
 use state::canisters::AuthState;
 use utils::event_streaming::events::PageVisit;
 use utils::sentry::{set_sentry_user, set_sentry_user_canister};
+use web_sys::CustomEvent;
+
+#[derive(Clone)]
+pub struct Notification(pub RwSignal<Option<serde_json::Value>>);
 
 #[component]
 fn CtxProvider(children: Children) -> impl IntoView {
@@ -24,6 +28,24 @@ fn CtxProvider(children: Children) -> impl IntoView {
             .map(|c| c.to_text());
         set_sentry_user_canister(user_canister);
     });
+
+    let window_target = use_window();
+
+    let notification = Notification(RwSignal::new(None));
+
+    let _ = use_event_listener(
+        window_target,
+        ev::Custom::new("firebaseForegroundMessage"),
+        move |event: CustomEvent| {
+            let payload = event.detail();
+            notification.0.set(payload.as_string().and_then(|s| {
+                log::info!("Payload: {s}");
+                serde_json::from_str(&s).ok()
+            }));
+        },
+    );
+
+    provide_context(notification);
 
     Effect::new(move |_| {
         let user_principal = auth.user_principal.get();

@@ -21,7 +21,6 @@ use state::canisters::unauth_canisters;
 use state::content_seed_client::ContentSeedClient;
 use utils::host::show_cdao_page;
 use utils::host::show_pnd_page;
-use utils::notifications::get_token_for_principal;
 use utils::send_wrap;
 use yral_canisters_common::utils::profile::ProfileDetails;
 
@@ -152,32 +151,6 @@ fn NsfwToggle() -> impl IntoView {
             </div>
             <div class="justify-self-end">
                 <Toggle checked=nsfw_enabled node_ref=toggle_ref />
-            </div>
-        </div>
-    }
-    .into_any()
-}
-
-#[component]
-#[allow(dead_code)]
-fn EnableNotifications(_user_details: ProfileDetails) -> impl IntoView {
-    let on_token_click: Action<(), ()> = Action::new_unsync(move |()| async move {
-        get_token_for_principal(_user_details.principal.to_string()).await;
-    });
-
-    view! {
-        <div class="grid grid-cols-2 items-center w-full">
-            <div class="flex flex-row gap-4 items-center">
-                <Icon attr:class="text-2xl" icon=icondata::BiCommentDotsRegular />
-                <span>Enable Notifications</span>
-            </div>
-            <div class="justify-self-end">
-                <button
-                    class="p-2 bg-black rounded-md text-white"
-                    on:click=move |_| {on_token_click.dispatch(());}
-                >
-                    Enable
-                </button>
             </div>
         </div>
     }

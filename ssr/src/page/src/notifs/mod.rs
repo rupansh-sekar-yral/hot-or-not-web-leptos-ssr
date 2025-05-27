@@ -1,14 +1,25 @@
 use leptos::{either::Either, prelude::*};
 use leptos_router::components::Redirect;
 use state::canisters::auth_state;
-use utils::notifications::get_token_for_principal;
 
+use utils::notifications::get_device_registeration_token;
 use yral_canisters_common::utils::profile::ProfileDetails;
+use yral_metadata_client::MetadataClient;
 
 #[component]
 fn NotifInnerComponent(details: ProfileDetails) -> impl IntoView {
+    let auth_state = auth_state();
+
     let on_token_click: Action<(), ()> = Action::new_unsync(move |()| async move {
-        get_token_for_principal(details.principal.to_string()).await;
+        let metaclient: MetadataClient<false> = MetadataClient::default();
+
+        let cans = auth_state.auth_cans(expect_context()).await.unwrap();
+
+        let token = get_device_registeration_token().await.unwrap();
+        metaclient
+            .register_device(cans.identity(), token)
+            .await
+            .unwrap();
     });
 
     view! {
