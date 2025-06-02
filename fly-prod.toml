@@ -22,8 +22,8 @@ memory = "1gb"
 
 [env]
 CF_ACCOUNT_ID = "a209c523d2d9646cc56227dbe6ce3ede"
-YRAL_AUTH_REDIRECT_URL = "https://hot-or-not-web-leptos-ssr-staging.fly.dev/auth/google_redirect"
-YRAL_AUTH_CLIENT_ID = "5c86a459-493d-463e-965d-be6ed74f3e5f"
+YRAL_AUTH_REDIRECT_URL = "https://yral.com/auth/google_redirect"
+YRAL_AUTH_CLIENT_ID = "4ec00561-91bb-4e60-9743-8bed684145ba"
 SENTRY_ENVIRONMENT = "production"
 ALLOYDB_DB_NAME = "postgres"
 ALLOYDB_DB_USER = "postgres"
