@@ -30,11 +30,7 @@ jobs:
           flyctl secrets set BACKEND_ADMIN_IDENTITY="$BACKEND_ADMIN_IDENTITY" --app "hot-or-not-web-leptos-ssr" --stage
           flyctl secrets set COOKIE_KEY="$COOKIE_KEY" --app "hot-or-not-web-leptos-ssr" --stage
           flyctl secrets set REDIS_URL="$REDIS_URL" --app "hot-or-not-web-leptos-ssr" --stage
-          flyctl secrets set GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET --app "hot-or-not-web-leptos-ssr" --stage
           flyctl secrets set GRPC_AUTH_TOKEN="$GRPC_AUTH_TOKEN" --app "hot-or-not-web-leptos-ssr" --stage
-          flyctl secrets set HOTORNOT_GOOGLE_CLIENT_SECRET="$HOTORNOT_GOOGLE_CLIENT_SECRET" --app "hot-or-not-web-leptos-ssr" --stage
-          flyctl secrets set ICPUMPFUN_GOOGLE_CLIENT_SECRET="$ICPUMPFUN_GOOGLE_CLIENT_SECRET" --app "hot-or-not-web-leptos-ssr" --stage
-          flyctl secrets set PUMPDUMP_GOOGLE_CLIENT_SECRET="$PUMPDUMP_GOOGLE_CLIENT_SECRET" --app "hot-or-not-web-leptos-ssr" --stage
           flyctl secrets set "HON_GOOGLE_SERVICE_ACCOUNT=$HON_GOOGLE_SERVICE_ACCOUNT" --app "hot-or-not-web-leptos-ssr" --stage
           flyctl secrets set QSTASH_TOKEN="$QSTASH_TOKEN" --app "hot-or-not-web-leptos-ssr" --stage
           flyctl secrets set GA4_API_SECRET="$GA4_API_SECRET" --app "hot-or-not-web-leptos-ssr" --stage
@@ -48,12 +44,8 @@ jobs:
           BACKEND_ADMIN_IDENTITY: ${{ secrets.YRAL_WHITELISTED_BACKEND_GLOBAL_ADMIN_SECRET_KEY }}
           COOKIE_KEY: ${{ secrets.AUTH_SESSION_COOKIE_SIGNING_SECRET_KEY }}
           REDIS_URL: ${{ secrets.AUTH_FLY_IO_UPSTASH_REDIS_DATABASE_CONNECTION_STRING }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_SIGNING_OAUTH_CLIENT_CREDENTIAL_CLIENT_SECRET }}
           FLY_API_TOKEN: ${{ secrets.HOT_OR_NOT_WEB_LEPTOS_SSR_FLY_IO_GITHUB_ACTION }}
           GRPC_AUTH_TOKEN: ${{ secrets.OFF_CHAIN_AGENT_GRPC_AUTH_TOKEN }}
-          HOTORNOT_GOOGLE_CLIENT_SECRET: ${{ secrets.HOT_OR_NOT_WTF_DOMAIN_GOOGLE_LOGIN_AUTH_CLIENT_SECRET }}
-          ICPUMPFUN_GOOGLE_CLIENT_SECRET: ${{secrets.IC_PUMP_FUN_GOOGLE_AUTH_CLIENT_SECRET}}
-          PUMPDUMP_GOOGLE_CLIENT_SECRET: ${{secrets.PUMP_DUMP_WTF_DOMAIN_GOOGLE_LOGIN_AUTH_CLIENT_SECRET}}
           HON_GOOGLE_SERVICE_ACCOUNT: ${{ secrets.HOT_OR_NOT_FEED_INTELLIGENCE_FIREBASE_PROJECT_EVENTS_BQ_SERVICE_ACCOUNT_JSON_FOR_WEB_LEPTOS_SSR_APP }}
           QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
           GA4_API_SECRET: ${{ secrets.GOOGLE_ANALYTICS_MEASUREMENT_PROTOCOL_API_SECRET }}
@@ -62,6 +54,7 @@ jobs:
           ALLOYDB_DB_PASSWORD: ${{ secrets.HOT_OR_NOT_ALLOYDB_DB_PASSWORD }}
           ALLOYDB_SERVICE_ACCOUNT_JSON: ${{ secrets.HOT_OR_NOT_ALLOYDB_SERVICE_ACCOUNT }}
           HON_WORKER_JWT: ${{ secrets.HOT_OR_NOT_WORKER_JWT }}
+
 
       - name: Deploy a docker container to Fly.io
         run: flyctl deploy --remote-only -c fly-prod.toml
