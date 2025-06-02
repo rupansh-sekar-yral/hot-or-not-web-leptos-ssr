@@ -15,7 +15,7 @@ pub fn YralAuthProvider() -> impl IntoView {
         if ctx.processing.get() == Some(ProviderKind::YralAuth) {
             "Signing In..."
         } else {
-            "Google Sign-In"
+            "Yral Sign-In"
         }
     };
     let done_guard = RwSignal::new(false);
@@ -87,11 +87,7 @@ pub fn YralAuthProvider() -> impl IntoView {
                 on_click()
             }
         >
-
-            <div class="grid grid-cols-1 place-items-center bg-white p-2 rounded-full">
-                // TODO: Add Yral Logo here
-                // <Icon attr:class="text-xl rounded-full" icon=YralLogoSymbol />
-            </div>
+            <img class="w-9 h-9 rounded-full" src="/img/yral/logo.webp" />
             <span class="text-white">{current_text}</span>
         </LoginProvButton>
     }
