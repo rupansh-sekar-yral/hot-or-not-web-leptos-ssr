@@ -86,7 +86,17 @@ pub fn BgView(
             <ShowAny when=move || { show_onboarding_popup.get() }>
                 <OnboardingPopUp onboard_on_click=set_onboarded />
             </ShowAny>
-            {move || post().map(|post| view! { <VideoDetailsOverlay post prev_post=prev_post.get() win_audio_ref /> })}
+            {move || {
+                let post = post.get()?;
+                let prev_post = prev_post.get();
+                Some(view! {
+                    <VideoDetailsOverlay
+                        post
+                        prev_post
+                        win_audio_ref
+                    />
+                 })
+            }}
             {children()}
         </div>
     }
