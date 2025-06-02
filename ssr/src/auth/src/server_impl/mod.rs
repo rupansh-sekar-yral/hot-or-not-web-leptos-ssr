@@ -233,7 +233,16 @@ pub async fn generate_anonymous_identity_if_required_impl(
         let token = oauth_client
             .exchange_client_credentials()
             .request_async(async_http_client)
-            .await?;
+            .await;
+        let token = match token {
+            Ok(token) => token,
+            Err(e) => {
+                eprintln!("Request token error {e:?}");
+                return Err(ServerFnError::new(format!(
+                    "Failed to exchange client credentials: {e}",
+                )));
+            }
+        };
 
         let id_token = token
             .extra_fields()

@@ -49,16 +49,14 @@ fn init_yral_oauth() -> auth::server_impl::yral::YralOAuthClient {
     use consts::yral_auth::{
         YRAL_AUTH_AUTHORIZATION_URL, YRAL_AUTH_ISSUER_URL, YRAL_AUTH_TOKEN_URL,
     };
-    use openidconnect::{ClientId, ClientSecret, IssuerUrl, RedirectUrl};
     use openidconnect::{AuthUrl, TokenUrl};
+    use openidconnect::{ClientId, ClientSecret, IssuerUrl, RedirectUrl};
 
     let client_id = env::var("YRAL_AUTH_CLIENT_ID").expect("`YRAL_AUTH_CLIENT_ID` is required!");
     let client_secret =
         env::var("YRAL_AUTH_CLIENT_SECRET").expect("`YRAL_AUTH_CLIENT_SECRET` is required!");
     let redirect_uri =
         env::var("YRAL_AUTH_REDIRECT_URL").expect("`YRAL_AUTH_REDIRECT_URL` is required!");
-
-    
 
     YralOAuthClient::new(
         ClientId::new(client_id),
