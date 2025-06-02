@@ -30,6 +30,16 @@ pub fn BgView(
     children: Children,
 ) -> impl IntoView {
     let post = Memo::new(move |_| video_queue.with(|q| q.get_index(idx).cloned()));
+    let prev_post = Memo::new(move |_| {
+        video_queue.with(|q| {
+            if idx > 0 {
+                q.get_index(idx - 1).cloned()
+            } else {
+                None
+            }
+        })
+    });
+
     let uid = move || post().as_ref().map(|q| q.uid.clone()).unwrap_or_default();
 
     let auth = auth_state();
@@ -76,7 +86,7 @@ pub fn BgView(
             <ShowAny when=move || { show_onboarding_popup.get() }>
                 <OnboardingPopUp onboard_on_click=set_onboarded />
             </ShowAny>
-            {move || post().map(|post| view! { <VideoDetailsOverlay post win_audio_ref /> })}
+            {move || post().map(|post| view! { <VideoDetailsOverlay post prev_post=prev_post.get() win_audio_ref /> })}
             {children()}
         </div>
     }
