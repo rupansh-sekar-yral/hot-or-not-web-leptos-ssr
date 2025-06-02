@@ -56,7 +56,7 @@ pub fn BgView(
     view! {
         <div class="bg-transparent w-full h-full relative overflow-hidden">
             <div
-                class="absolute top-0 left-0 bg-cover bg-center w-full h-full z-[1] blur-lg"
+                class="absolute top-0 left-0 bg-cover bg-center w-full h-full z-1 blur-lg"
                 style:background-color="rgb(0, 0, 0)"
                 style:background-image=move || format!("url({})", bg_url(uid()))
             ></div>
@@ -66,10 +66,10 @@ pub fn BgView(
                     && show_refer_login_popup.get()
             }>
                 <FeedPopUp
-                    on_click=move |_| set_show_refer_login_popup.set(false)
+                    on_dismiss=move |_| set_show_refer_login_popup.set(false)
                     header_text="Claim Your Referral
                     Rewards Now!"
-                    body_text="SignUp from this link to get 500 Cents as referral rewards."
+                    body_text="Signup now to receive 500 SATS as referral rewards."
                     login_text="Sign Up"
                 />
             </ShowAny>

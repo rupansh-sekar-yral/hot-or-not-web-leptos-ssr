@@ -1,6 +1,7 @@
 #![recursion_limit = "256"]
 pub mod about_us;
 pub mod airdrop;
+pub mod consts;
 pub mod err;
 pub mod faq;
 pub mod hon;

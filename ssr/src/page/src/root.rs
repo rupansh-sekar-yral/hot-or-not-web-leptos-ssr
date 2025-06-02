@@ -81,26 +81,14 @@ pub fn YralRootPage() -> impl IntoView {
         }
     });
     let post_details_cache: PostDetailsCacheCtx = expect_context();
-    // let auth = auth_state();
-
-    // Effect::new(move |_| {
-    //     let ctx = auth.event_ctx();
-    //     if let Some(global) = MixpanelGlobalProps::from_ev_ctx(ctx) {
-    //         MixPanelEvent::track_home_page_viewed(MixpanelHomePageViewedProps {
-    //             user_id: global.user_id,
-    //             visitor_id: global.visitor_id,
-    //             is_logged_in: global.is_logged_in,
-    //             canister_id: global.canister_id,
-    //             is_nsfw_enabled: global.is_nsfw_enabled,
-    //         })
-    //     }
-    // });
 
     view! {
         <Title text="YRAL - Home" />
         <Suspense fallback=FullScreenSpinner>
-            {move || Suspend::new(async move {
-                let url = match target_post.await {
+            {move || {
+                let user_refer = params.get().get("user_refer").map(|s| s.to_string());
+                Suspend::new(async move {
+                let mut url = match target_post.await {
                     Ok(Some(post_item)) => {
                         let canister_id = post_item.canister_id;
                         let post_id = post_item.post_id;
@@ -113,8 +101,14 @@ pub fn YralRootPage() -> impl IntoView {
                     Ok(None) => "/error?err=No Posts Found".to_string(),
                     Err(e) => format!("/error?err={e}"),
                 };
+
+                if let Some(user_refer) = user_refer {
+                    url.push_str(&format!("?user_refer={user_refer}"));
+                }
+
                 view! { <Redirect path=url /> }
-            })}
+            })
+        }}
         </Suspense>
     }
     .into_any()
