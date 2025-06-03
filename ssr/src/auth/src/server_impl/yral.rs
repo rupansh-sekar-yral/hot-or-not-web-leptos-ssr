@@ -1,7 +1,11 @@
+use std::env;
+
 use axum_extra::extract::{
     cookie::{Cookie, Key, SameSite},
     PrivateCookieJar, SignedCookieJar,
 };
+use candid::Principal;
+use consts::auth::REFRESH_MAX_AGE;
 use leptos::prelude::*;
 use leptos_axum::{extract_with_state, ResponseOptions};
 use openidconnect::{
@@ -19,6 +23,7 @@ use openidconnect::{
 };
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
+use yral_canisters_common::utils::time::current_epoch;
 use yral_types::delegated_identity::DelegatedIdentityWire;
 
 // use crate::auth::{
@@ -38,6 +43,16 @@ const CSRF_TOKEN_COOKIE: &str = "google-csrf-token";
 pub struct YralAuthAdditionalTokenClaims {
     pub ext_is_anonymous: bool,
     pub ext_delegated_identity: DelegatedIdentityWire,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct YralAuthRefreshTokenClaims {
+    pub aud: String,
+    pub exp: usize,
+    pub iat: usize,
+    pub iss: String,
+    pub sub: Principal,
+    pub ext_is_anonymous: bool,
 }
 
 impl AdditionalClaims for YralAuthAdditionalTokenClaims {}
@@ -180,4 +195,28 @@ pub async fn perform_yral_auth_impl(
     update_user_identity(&resp, jar, refresh_token.secret().clone())?;
 
     Ok(identity)
+}
+
+// based on https://github.com/dolr-ai/yral-auth-v2/blob/main/src/oauth/jwt/generate.rs
+/// returns the new refresh token
+pub fn migrate_identity_to_yral_auth(principal: Principal, is_anonymous: bool) -> String {
+    let enc_key: jsonwebtoken::EncodingKey = expect_context();
+
+    let client_id =
+        env::var("YRAL_AUTH_CLIENT_ID").expect("expected to have `YRAL_AUTH_CLIENT_ID`");
+
+    let now = current_epoch();
+    let claims = YralAuthRefreshTokenClaims {
+        aud: client_id,
+        exp: (now + REFRESH_MAX_AGE).as_millis() as usize,
+        iat: now.as_millis() as usize,
+        iss: "https://auth.yral.com".to_string(),
+        sub: principal,
+        ext_is_anonymous: is_anonymous,
+    };
+
+    let mut jwt_headers = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::ES256);
+    jwt_headers.kid = Some("default".to_string());
+
+    jsonwebtoken::encode(&jwt_headers, &claims, &enc_key).expect("failed to encode JWT?!")
 }

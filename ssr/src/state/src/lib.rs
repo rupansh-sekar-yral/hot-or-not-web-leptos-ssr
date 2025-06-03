@@ -43,6 +43,8 @@ pub mod server {
         pub cookie_key: Key,
         #[cfg(feature = "oauth-ssr")]
         pub yral_oauth_client: auth::server_impl::yral::YralOAuthClient,
+        #[cfg(feature = "oauth-ssr")]
+        pub yral_auth_migration_key: jsonwebtoken::EncodingKey,
         #[cfg(feature = "ga4")]
         pub grpc_offchain_channel: tonic::transport::Channel,
         #[cfg(feature = "firestore")]

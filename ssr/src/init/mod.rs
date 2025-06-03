@@ -71,6 +71,16 @@ fn init_yral_oauth() -> auth::server_impl::yral::YralOAuthClient {
     .set_auth_type(AuthType::RequestBody)
 }
 
+#[cfg(feature = "oauth-ssr")]
+fn init_yral_auth_migration_key() -> jsonwebtoken::EncodingKey {
+    let raw_pem = env::var("YRAL_AUTH_MIGRATION_ES256_PEM")
+        .expect("`YRAL_AUTH_MIGRATION_ES256_PEM` is required!");
+    let enc_key = jsonwebtoken::EncodingKey::from_ec_pem(raw_pem.as_bytes())
+        .expect("Invalid `YRAL_AUTH_MIGRATION_ES256_PEM`");
+
+    enc_key
+}
+
 #[cfg(feature = "firestore")]
 async fn init_firestoredb() -> firestore::FirestoreDb {
     use firestore::{FirestoreDb, FirestoreDbOptions};
@@ -279,6 +289,8 @@ impl AppStateBuilder {
             cookie_key: init_cookie_key(),
             #[cfg(feature = "oauth-ssr")]
             yral_oauth_client: init_yral_oauth(),
+            #[cfg(feature = "oauth-ssr")]
+            yral_auth_migration_key: init_yral_auth_migration_key(),
             #[cfg(feature = "ga4")]
             grpc_offchain_channel: init_grpc_offchain_channel().await,
             #[cfg(feature = "firestore")]

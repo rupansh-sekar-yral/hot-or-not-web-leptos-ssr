@@ -5,20 +5,25 @@ pub mod yral;
 use axum::response::IntoResponse;
 use axum_extra::extract::{
     cookie::{Cookie, Key, SameSite},
-    SignedCookieJar,
+    CookieJar, SignedCookieJar,
 };
 use candid::Principal;
 use http::header;
 use ic_agent::{identity::Secp256k1Identity, Identity};
 use k256::elliptic_curve::JwkEcKey;
 use leptos::prelude::*;
-use leptos_axum::{extract_with_state, ResponseOptions};
+use leptos_axum::{extract, extract_with_state, ResponseOptions};
 use rand_chacha::rand_core::OsRng;
 use yral_canisters_common::utils::time::current_epoch;
 
-use consts::auth::{REFRESH_MAX_AGE, REFRESH_TOKEN_COOKIE};
+use consts::{
+    auth::{REFRESH_MAX_AGE, REFRESH_TOKEN_COOKIE},
+    ACCOUNT_CONNECTED_STORE,
+};
 
-use crate::AnonymousIdentity;
+use crate::{
+    delegate_identity, server_impl::yral::migrate_identity_to_yral_auth, AnonymousIdentity,
+};
 
 use self::store::{KVStore, KVStoreImpl};
 use yral_types::delegated_identity::DelegatedIdentityWire;
@@ -110,6 +115,25 @@ pub fn update_user_identity(
     Ok(())
 }
 
+async fn extract_identity_legacy(
+    jar: &SignedCookieJar,
+    refresh_token: &Cookie<'static>,
+) -> Result<Option<DelegatedIdentityWire>, ServerFnError> {
+    if serde_json::from_str::<RefreshTokenLegacy>(refresh_token.value()).is_err() {
+        return Ok(None);
+    }
+
+    let kv: KVStoreImpl = expect_context();
+    let Some(id) = try_extract_identity_legacy(jar, &kv).await? else {
+        return Ok(None);
+    };
+    let base_identity = Secp256k1Identity::from_private_key(id);
+
+    let id = delegate_identity(&base_identity);
+
+    Ok(Some(id))
+}
+
 pub async fn extract_identity_impl() -> Result<Option<DelegatedIdentityWire>, ServerFnError> {
     let key: Key = expect_context();
     let jar: SignedCookieJar = extract_with_state(&key).await?;
@@ -134,6 +158,10 @@ pub async fn extract_identity_impl() -> Result<Option<DelegatedIdentityWire>, Se
         let Some(refresh_token) = jar.get(REFRESH_TOKEN_COOKIE) else {
             return Ok(None);
         };
+
+        if let Some(id) = extract_identity_legacy(&jar, &refresh_token).await? {
+            return Ok(Some(id));
+        }
 
         let oauth2: YralOAuthClient = expect_context();
         let token_res = oauth2
@@ -262,12 +290,32 @@ pub async fn generate_anonymous_identity_if_required_impl(
     }
 }
 
-pub async fn set_anonymous_identity_cookie_impl(refresh_jwt: String) -> Result<(), ServerFnError> {
+pub async fn set_anonymous_identity_cookie_impl(
+    refresh_jwt: Option<String>,
+) -> Result<(), ServerFnError> {
     let key: Key = expect_context();
     let jar: SignedCookieJar = extract_with_state(&key).await?;
 
     let resp: ResponseOptions = expect_context();
-    update_user_identity(&resp, jar, refresh_jwt)?;
+
+    if let Some(refresh_jwt) = refresh_jwt {
+        update_user_identity(&resp, jar, refresh_jwt)?;
+        return Ok(());
+    }
+
+    // TODO: remove this after 30 days
+    let Ok(Some(user_principal)) = extract_principal_from_cookie_legacy(&jar) else {
+        return Ok(());
+    };
+    let unsigned_jar: CookieJar = extract().await?;
+
+    let is_connected = unsigned_jar
+        .get(ACCOUNT_CONNECTED_STORE)
+        .map(|cookie| cookie.value() == "true")
+        .unwrap_or_default();
+    let new_cookie = migrate_identity_to_yral_auth(user_principal, is_connected);
+
+    update_user_identity(&resp, jar, new_cookie)?;
 
     Ok(())
 }

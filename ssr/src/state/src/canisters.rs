@@ -75,10 +75,9 @@ impl Default for AuthState {
         });
         let temp_id_cookie_resource = LocalResource::new(move || async move {
             let temp_identity = temp_identity_resource.await;
-            let Some(id) = temp_identity else {
-                return;
-            };
-            if let Err(e) = set_anonymous_identity_cookie(id.refresh_token).await {
+            if let Err(e) =
+                set_anonymous_identity_cookie(temp_identity.map(|id| id.refresh_token)).await
+            {
                 log::error!("Failed to set anonymous identity as cookie?! err {e}");
             }
         });

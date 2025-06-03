@@ -75,6 +75,7 @@ jobs:
           flyctl secrets set YRAL_AUTH_CLIENT_SECRET="$YRAL_AUTH_CLIENT_SECRET" --app "$APP_NAME" --stage
           flyctl secrets set YRAL_AUTH_REDIRECT_URL="https://$APP_NAME.fly.dev/auth/google_redirect" --app "$APP_NAME" --stage
           flyctl secrets set ANALYTICS_SERVER_TOKEN="$ANALYTICS_SERVER_TOKEN" --app "$APP_NAME" --stage
+          flyctl secrets set YRAL_AUTH_MIGRATION_ES256_PEM="$YRAL_AUTH_MIGRATION_ES256_PEM" --app "$APP_NAME" --stage
           flyctl deploy --app $APP_NAME
         env:
           CF_TOKEN: ${{ secrets.CLOUDFLARE_STREAM_IMAGES_ANALYTICS_READ_WRITE_SECRET }}
@@ -93,6 +94,7 @@ jobs:
           HON_WORKER_JWT: ${{ secrets.HOT_OR_NOT_WORKER_JWT }}
           YRAL_AUTH_CLIENT_SECRET: ${{ secrets.YRAL_AUTH_V2_PREVIEW_SECRET_KEY }}
           ANALYTICS_SERVER_TOKEN: ${{ secrets.ANALYTICS_SERVER_TOKEN }}
+          YRAL_AUTH_MIGRATION_ES256_PEM: ${{ secrets.AUTH_JWT_ES256_SIGNING_SECRET_KEY_PEM }}
 
   e2e-tests:
     needs: preview
