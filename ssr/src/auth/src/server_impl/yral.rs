@@ -23,7 +23,8 @@ use openidconnect::{
 };
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
-use yral_canisters_common::utils::time::current_epoch;
+use yral_canisters_client::individual_user_template::{Result9, SessionType};
+use yral_canisters_common::{utils::time::current_epoch, Canisters};
 use yral_types::delegated_identity::DelegatedIdentityWire;
 
 // use crate::auth::{
@@ -199,11 +200,72 @@ pub async fn perform_yral_auth_impl(
 
 // based on https://github.com/dolr-ai/yral-auth-v2/blob/main/src/oauth/jwt/generate.rs
 /// returns the new refresh token
-pub fn migrate_identity_to_yral_auth(principal: Principal, is_anonymous: bool) -> String {
+pub async fn migrate_identity_to_yral_auth(
+    principal: Principal,
+    user_canister: Option<Principal>,
+    mut is_anonymous: bool,
+) -> Result<String, ServerFnError> {
     let enc_key: jsonwebtoken::EncodingKey = expect_context();
 
     let client_id =
         env::var("YRAL_AUTH_CLIENT_ID").expect("expected to have `YRAL_AUTH_CLIENT_ID`");
+
+    // verify user anonimity
+    if !is_anonymous {
+        let cans: Canisters<false> = use_context().unwrap_or_default();
+        let user_canister_id = if let Some(user_canister) = user_canister {
+            user_canister
+        } else {
+            cans.get_individual_canister_by_user_principal(principal)
+                .await?
+                .ok_or_else(|| ServerFnError::new("User canister not found"))?
+        };
+        let user_canister = cans.individual_user(user_canister_id).await;
+
+        // critical loops we don't want to fail here
+        let mut retry_cnt = 0;
+        let is_owner = loop {
+            if retry_cnt > 5 {
+                return Err(ServerFnError::new(
+                    "Failed to lookup profile details for user",
+                ));
+            }
+            match user_canister.get_profile_details_v_2().await {
+                Ok(details) => break details.principal_id == principal,
+                Err(e) => {
+                    eprintln!(
+                        "failed to lookup profile details for {user_canister_id}: {e}, retrying"
+                    );
+                    tokio::time::sleep(Duration::from_millis(300)).await;
+                }
+            }
+            retry_cnt += 1;
+        };
+        if !is_owner {
+            return Err(ServerFnError::new(
+                "Principal is not the owner of the user canister",
+            ));
+        }
+
+        retry_cnt = 0;
+        is_anonymous = loop {
+            if retry_cnt > 5 {
+                return Err(ServerFnError::new("Failed to lookup session type for user"));
+            }
+            match user_canister.get_session_type().await {
+                Ok(Result9::Ok(session_type)) => {
+                    break session_type != SessionType::RegisteredSession
+                }
+                e => {
+                    eprintln!(
+                        "failed to lookup session type for {user_canister_id}: {e:?}, retrying"
+                    );
+                    tokio::time::sleep(Duration::from_millis(300)).await;
+                }
+            }
+            retry_cnt += 1;
+        };
+    }
 
     let now = current_epoch();
     let claims = YralAuthRefreshTokenClaims {
@@ -218,5 +280,5 @@ pub fn migrate_identity_to_yral_auth(principal: Principal, is_anonymous: bool) -
     let mut jwt_headers = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::ES256);
     jwt_headers.kid = Some("default".to_string());
 
-    jsonwebtoken::encode(&jwt_headers, &claims, &enc_key).expect("failed to encode JWT?!")
+    Ok(jsonwebtoken::encode(&jwt_headers, &claims, &enc_key).expect("failed to encode JWT?!"))
 }

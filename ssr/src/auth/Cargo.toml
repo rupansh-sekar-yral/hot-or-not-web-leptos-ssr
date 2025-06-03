@@ -32,6 +32,7 @@ leptos_axum = {workspace = true, optional = true}
 openidconnect = {workspace = true, optional = true}
 consts.workspace = true
 jsonwebtoken = { workspace = true, optional = true }
+yral-canisters-client = { workspace = true, optional = true }
 
 [features]
 ssr = [
@@ -48,7 +49,7 @@ ssr = [
     "bb8-redis",
     "consts/ssr",
 ]
-oauth-ssr = ["dep:openidconnect", "dep:jsonwebtoken", "consts/oauth-ssr"]
+oauth-ssr = ["dep:openidconnect", "dep:jsonwebtoken", "dep:yral-canisters-client", "consts/oauth-ssr"]
 # use ic_agent::{
 #     identity::{Delegation, Secp256k1Identity, SignedDelegation},
 #     Identity,

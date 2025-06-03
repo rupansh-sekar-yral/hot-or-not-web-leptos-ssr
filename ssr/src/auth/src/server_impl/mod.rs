@@ -18,7 +18,7 @@ use yral_canisters_common::utils::time::current_epoch;
 
 use consts::{
     auth::{REFRESH_MAX_AGE, REFRESH_TOKEN_COOKIE},
-    ACCOUNT_CONNECTED_STORE,
+    ACCOUNT_CONNECTED_STORE, USER_CANISTER_ID_STORE,
 };
 
 use crate::{
@@ -313,7 +313,11 @@ pub async fn set_anonymous_identity_cookie_impl(
         .get(ACCOUNT_CONNECTED_STORE)
         .map(|cookie| cookie.value() == "true")
         .unwrap_or_default();
-    let new_cookie = migrate_identity_to_yral_auth(user_principal, is_connected);
+    let user_canister = unsigned_jar
+        .get(USER_CANISTER_ID_STORE)
+        .and_then(|cookie| cookie.value().parse().ok());
+    let new_cookie =
+        migrate_identity_to_yral_auth(user_principal, user_canister, !is_connected).await?;
 
     update_user_identity(&resp, jar, new_cookie)?;
 
