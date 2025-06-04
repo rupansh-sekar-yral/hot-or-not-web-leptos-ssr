@@ -21,9 +21,7 @@ use consts::{
     ACCOUNT_CONNECTED_STORE, USER_CANISTER_ID_STORE,
 };
 
-use crate::{
-    delegate_identity, server_impl::yral::migrate_identity_to_yral_auth, AnonymousIdentity,
-};
+use crate::{delegate_identity, AnonymousIdentity};
 
 use self::store::{KVStore, KVStoreImpl};
 use yral_types::delegated_identity::DelegatedIdentityWire;
@@ -304,22 +302,27 @@ pub async fn set_anonymous_identity_cookie_impl(
     }
 
     // TODO: remove this after 30 days
-    let Ok(Some(user_principal)) = extract_principal_from_cookie_legacy(&jar) else {
-        return Ok(());
-    };
-    let unsigned_jar: CookieJar = extract().await?;
+    #[cfg(feature = "oauth-ssr")]
+    {
+        use yral::migrate_identity_to_yral_auth;
 
-    let is_connected = unsigned_jar
-        .get(ACCOUNT_CONNECTED_STORE)
-        .map(|cookie| cookie.value() == "true")
-        .unwrap_or_default();
-    let user_canister = unsigned_jar
-        .get(USER_CANISTER_ID_STORE)
-        .and_then(|cookie| cookie.value().parse().ok());
-    let new_cookie =
-        migrate_identity_to_yral_auth(user_principal, user_canister, !is_connected).await?;
+        let Ok(Some(user_principal)) = extract_principal_from_cookie_legacy(&jar) else {
+            return Ok(());
+        };
+        let unsigned_jar: CookieJar = extract().await?;
 
-    update_user_identity(&resp, jar, new_cookie)?;
+        let is_connected = unsigned_jar
+            .get(ACCOUNT_CONNECTED_STORE)
+            .map(|cookie| cookie.value() == "true")
+            .unwrap_or_default();
+        let user_canister = unsigned_jar
+            .get(USER_CANISTER_ID_STORE)
+            .and_then(|cookie| cookie.value().parse().ok());
+        let new_cookie =
+            migrate_identity_to_yral_auth(user_principal, user_canister, !is_connected).await?;
+
+        update_user_identity(&resp, jar, new_cookie)?;
+    }
 
     Ok(())
 }
