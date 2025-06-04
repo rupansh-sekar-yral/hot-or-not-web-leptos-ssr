@@ -1,6 +1,5 @@
 use component::auth_providers::yral::YralAuthMessage;
 use component::loading::Loading;
-use ic_agent::identity::DelegatedIdentity;
 use leptos::prelude::*;
 use leptos_router::hooks::use_query;
 use leptos_router::params::Params;
@@ -8,9 +7,7 @@ use leptos_router::params::Params;
 use openidconnect::CsrfToken;
 use serde::{Deserialize, Serialize};
 use server_fn::codec::Json;
-use state::canisters::auth_state;
 use utils::route::go_to_root;
-use yral_canisters_common::yral_auth_login_hint;
 use yral_types::delegated_identity::DelegatedIdentityWire;
 
 #[server]
@@ -119,40 +116,5 @@ pub fn YralAuthRedirectHandler() -> impl IntoView {
             })}
             </Suspense>
         </Loading>
-    }
-}
-
-#[component]
-pub fn YralAuthRedirector() -> impl IntoView {
-    let auth = auth_state();
-    let yral_auth_redirect = Resource::new_blocking(
-        || (),
-        move |_| async move {
-            let cans = auth.cans_wire().await?;
-            let id = DelegatedIdentity::try_from(cans.id)?;
-            let login_hint = yral_auth_login_hint(&id)?;
-            yral_auth_redirector(login_hint).await
-        },
-    );
-
-    let do_close = RwSignal::new(false);
-    Effect::new(move |_| {
-        if !do_close() {
-            return;
-        }
-        let window = window();
-        _ = window.close();
-    });
-
-    view! {
-        <Suspense>
-            {move || {
-                if let Some(Err(_)) = yral_auth_redirect.get() {
-                    do_close.set(true)
-                }
-                None::<()>
-            }}
-
-        </Suspense>
     }
 }

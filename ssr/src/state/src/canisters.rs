@@ -62,6 +62,7 @@ pub struct AuthState {
     pub user_principal: Resource<Result<Principal, ServerFnError>>,
     user_principal_cookie: (Signal<Option<Principal>>, WriteSignal<Option<Principal>>),
     event_ctx: EventCtx,
+    pub user_identity: Resource<Result<DelegatedIdentityWire, ServerFnError>>,
 }
 
 impl Default for AuthState {
@@ -232,6 +233,7 @@ impl Default for AuthState {
             user_canister,
             user_canister_id_cookie,
             event_ctx,
+            user_identity: user_identity_resource,
         }
     }
 }

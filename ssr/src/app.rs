@@ -64,20 +64,6 @@ fn GoogleAuthRedirectHandlerRoute() -> impl MatchNestedRoutes + Clone {
     }
 }
 
-#[component(transparent)]
-fn GoogleAuthRedirectorRoute() -> impl MatchNestedRoutes + Clone {
-    let path = path!("/auth/perform_google_redirect");
-    #[cfg(any(feature = "oauth-ssr", feature = "oauth-hydrate"))]
-    {
-        use page::yral_auth_redirect::YralAuthRedirector;
-        view! { <Route path view=YralAuthRedirector /> }.into_inner()
-    }
-    #[cfg(not(any(feature = "oauth-ssr", feature = "oauth-hydrate")))]
-    {
-        view! { <Route path view=NotFound /> }.into_inner()
-    }
-}
-
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
@@ -199,7 +185,6 @@ pub fn App() -> impl IntoView {
                 <Routes fallback=|| view! { <NotFound /> }.into_view()>
                     // auth redirect routes exist outside main context
                     <GoogleAuthRedirectHandlerRoute />
-                    <GoogleAuthRedirectorRoute />
                     <Route path=path!("/") view=RootPage />
                     <ParentRoute path=path!("") view=BaseRoute>
                         <Route path=path!("/hot-or-not/withdraw") view=hon::withdrawal::HonWithdrawal />
