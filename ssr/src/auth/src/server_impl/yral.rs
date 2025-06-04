@@ -17,9 +17,9 @@ use openidconnect::{
         CoreTokenType,
     },
     reqwest::async_http_client,
-    AdditionalClaims, AuthorizationCode, CsrfToken, EmptyExtraTokenFields, IdTokenFields, Nonce,
-    OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, Scope, StandardErrorResponse,
-    StandardTokenResponse,
+    AdditionalClaims, AuthorizationCode, CsrfToken, EmptyExtraTokenFields, IdTokenFields,
+    LoginHint, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, Scope,
+    StandardErrorResponse, StandardTokenResponse,
 };
 use serde::{Deserialize, Serialize};
 use web_time::Duration;
@@ -99,6 +99,7 @@ struct OAuthState {
 
 pub async fn yral_auth_url_impl(
     oauth2: YralOAuthClient,
+    login_hint: String,
     client_redirect_uri: Option<String>,
 ) -> Result<String, ServerFnError> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
@@ -115,7 +116,8 @@ pub async fn yral_auth_url_impl(
             Nonce::new_random,
         )
         .add_scope(Scope::new("openid".into()))
-        .set_pkce_challenge(pkce_challenge);
+        .set_pkce_challenge(pkce_challenge)
+        .set_login_hint(LoginHint::new(login_hint));
 
     let (auth_url, oauth_csrf_token, _) = oauth2_request.url();
 

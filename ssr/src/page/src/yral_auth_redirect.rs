@@ -1,5 +1,6 @@
 use component::auth_providers::yral::YralAuthMessage;
 use component::loading::Loading;
+use ic_agent::identity::DelegatedIdentity;
 use leptos::prelude::*;
 use leptos_router::hooks::use_query;
 use leptos_router::params::Params;
@@ -7,17 +8,19 @@ use leptos_router::params::Params;
 use openidconnect::CsrfToken;
 use serde::{Deserialize, Serialize};
 use server_fn::codec::Json;
+use state::canisters::auth_state;
 use utils::route::go_to_root;
+use yral_canisters_common::yral_auth_login_hint;
 use yral_types::delegated_identity::DelegatedIdentityWire;
 
 #[server]
-async fn yral_auth_redirector() -> Result<(), ServerFnError> {
+async fn yral_auth_redirector(login_hint: String) -> Result<(), ServerFnError> {
     use auth::server_impl::yral::yral_auth_url_impl;
     use auth::server_impl::yral::YralOAuthClient;
 
     let oauth2: YralOAuthClient = expect_context();
 
-    let url = yral_auth_url_impl(oauth2, None).await?;
+    let url = yral_auth_url_impl(oauth2, login_hint, None).await?;
     leptos_axum::redirect(&url);
     Ok(())
 }
@@ -121,7 +124,17 @@ pub fn YralAuthRedirectHandler() -> impl IntoView {
 
 #[component]
 pub fn YralAuthRedirector() -> impl IntoView {
-    let yral_auth_redirect = Resource::new_blocking(|| (), |_| yral_auth_redirector());
+    let auth = auth_state();
+    let yral_auth_redirect = Resource::new_blocking(
+        || (),
+        move |_| async move {
+            let cans = auth.cans_wire().await?;
+            let id = DelegatedIdentity::try_from(cans.id)?;
+            let login_hint = yral_auth_login_hint(&id)?;
+            yral_auth_redirector(login_hint).await
+        },
+    );
+
     let do_close = RwSignal::new(false);
     Effect::new(move |_| {
         if !do_close() {
