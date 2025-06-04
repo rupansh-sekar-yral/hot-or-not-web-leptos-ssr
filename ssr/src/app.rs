@@ -130,6 +130,8 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 
                 <AutoReload options=options.clone() />
                 <HashedStylesheet id="leptos" options=options.clone() />
+                <Meta property="og:title" content="DOLR AI" />
+                <Meta property="og:image" content="/img/common/refer-earn.webp" />
                 <HydrationScripts options />
                 <MetaTags />
             </head>
