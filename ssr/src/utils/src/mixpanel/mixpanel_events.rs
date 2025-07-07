@@ -397,6 +397,22 @@ pub struct MixpanelReferAndEarnPageViewedProps {
     pub referral_bonus: u64,
 }
 #[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MixpanelOnboardingPopupType {
+    SatsCreditPopup,
+}
+
+#[derive(Serialize)]
+pub struct MixpanelOnboardingPopupViewProps {
+    pub user_id: Option<String>,
+    pub visitor_id: Option<String>,
+    pub is_logged_in: bool,
+    pub canister_id: String,
+    pub is_nsfw_enabled: bool,
+    pub credited_amount: u64,
+    pub popup_type: MixpanelOnboardingPopupType,
+}
+#[derive(Serialize)]
 pub struct MixpanelVideoUploadFailureProps {
     pub user_id: Option<String>,
     pub visitor_id: Option<String>,
@@ -772,6 +788,22 @@ pub struct MixpanelGamePlayedProps {
 }
 
 #[derive(Serialize)]
+pub struct MixpanelHowToPlayGameClickedProps {
+    // #[serde(flatten)]
+    pub user_id: Option<String>,
+    pub visitor_id: Option<String>,
+    pub is_logged_in: bool,
+    pub canister_id: String,
+    pub is_nsfw_enabled: bool,
+    pub video_id: String,
+    pub game_type: MixpanelPostGameType,
+    pub stake_amount: u64,
+    pub stake_type: StakeType,
+    pub option_chosen: ChosenGameOption,
+    pub conclusion: GameConclusion,
+}
+
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum GameConclusion {
     Pending,
@@ -898,6 +930,9 @@ impl MixPanelEvent {
     }
     pub fn track_video_upload_error_shown(p: MixpanelVideoUploadFailureProps) {
         send_event_to_server("video_upload_error_shown", p);
+    }
+    pub fn track_onboarding_popup(p: MixpanelOnboardingPopupViewProps) {
+        send_event_to_server("onboarding_popup_shown", p);
     }
     pub fn track_video_upload_select_file_clicked(p: MixpanelVideoUploadFileSelectionInitProps) {
         send_event_to_server("select_file_clicked", p);
@@ -1094,5 +1129,9 @@ impl MixPanelEvent {
 
     pub fn track_third_party_wallet_transferred(p: MixpanelThirdPartyWalletTransferredProps) {
         track_event("third_party_wallet_transferred", p);
+    }
+
+    pub fn track_how_to_play_clicked(p: MixpanelHowToPlayGameClickedProps) {
+        track_event("how_to_play_clicked", p);
     }
 }
