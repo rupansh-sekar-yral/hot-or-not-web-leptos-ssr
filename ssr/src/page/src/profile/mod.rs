@@ -150,43 +150,49 @@ fn ProfileViewInner(user: ProfileDetails, user_canister: Principal) -> impl Into
         <div class="overflow-y-auto pt-10 pb-12 min-h-screen text-white bg-black">
             <div class="grid grid-cols-1 gap-5 justify-items-center w-full justify-normal">
                 <div class="flex flex-row justify-center w-11/12 sm:w-7/12">
-                    <div class="flex flex-col justify-center items-center">
-                        <img
-                            class="w-24 h-24 rounded-full"
-                            alt=username_or_principal.clone()
-                            src=profile_pic
-                        />
-                        <div class="flex flex-col items-center text-center">
-                            <span
-                                class="font-bold text-white text-md"
-                                class=("w-full", is_connected)
-                                class=("w-5/12", move || !is_connected())
-                                class=("truncate", move || !is_connected())
-                            >
-                                {display_name}
-                            </span>
-                            <Suspense>
-                                {move || {
-                                    auth.user_principal
-                                        .get()
-                                        .map(|v| {
-                                            view! {
-                                                <Show when=move || {
-                                                    !is_connected() && v == Ok(user_principal)
-                                                }>
-                                                    <div class="pt-5 w-6/12 md:w-4/12">
-                                                        <ConnectLogin
-                                                            cta_location="profile"
-                                                            redirect_to=format!("/profile/posts")
-                                                        />
-                                                    </div>
-                                                </Show>
-                                            }
-                                        })
-                                }}
-                            </Suspense>
+                    <div class="flex flex-row items-center justify-between w-full p-4 bg-gray-800 rounded-lg">
+                        <div class="flex flex-row items-center gap-4">
+                            <img
+                                class="w-16 h-16 rounded-full"
+                                alt=username_or_principal.clone()
+                                src=profile_pic
+                            />
+                            <div class="flex flex-col">
+                                <span class="font-bold text-white text-lg">
+                                    {"@"}{username_or_principal.clone()}
+                                </span>
+                                <span class="text-gray-400 text-sm truncate max-w-xs">
+                                    {user_principal.to_text()}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            // Edit icon placeholder - you can replace this with your actual edit icon
+                            <div class="w-6 h-6 bg-gray-600 rounded"></div>
                         </div>
                     </div>
+                </div>
+                <div class="flex flex-col justify-center items-center w-11/12 sm:w-7/12">
+                    <Suspense>
+                        {move || {
+                            auth.user_principal
+                                .get()
+                                .map(|v| {
+                                    view! {
+                                        <Show when=move || {
+                                            !is_connected() && v == Ok(user_principal)
+                                        }>
+                                            <div class="pt-5 w-6/12 md:w-4/12">
+                                                <ConnectLogin
+                                                    cta_location="profile"
+                                                    redirect_to=format!("/profile/posts")
+                                                />
+                                            </div>
+                                        </Show>
+                                    }
+                                })
+                        }}
+                    </Suspense>
                 </div>
                 <ListSwitcher1 user_canister user_principal />
             </div>
